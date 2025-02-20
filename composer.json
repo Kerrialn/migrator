@@ -1,69 +1,31 @@
 {
-    "type": "project",
-    "license": "proprietary",
-    "minimum-stability": "stable",
-    "prefer-stable": true,
+    "name": "kerrialn/migrator",
     "require": {
-        "php": ">=8.2",
-        "ext-ctype": "*",
-        "ext-iconv": "*",
-        "symfony/console": "7.2.*",
-        "symfony/dotenv": "7.2.*",
-        "symfony/flex": "^2",
-        "symfony/framework-bundle": "7.2.*",
-        "symfony/runtime": "7.2.*",
-        "symfony/yaml": "7.2.*"
+        "php": "^8.2",
+        "symfony/console": "^7.1",
+        "symfony/process": "^7.1",
+        "phpstan/phpstan": "^1.12",
+        "symfony/event-dispatcher": "^7.2",
+        "symfony/framework-bundle": "^7.2",
+        "kerrialn/composer-json-parser": "dev-main",
+        "symfony/finder": "^7.2",
+        "symfony/http-foundation": "^7.2",
+        "symfony/http-client": "^7.2",
+        "nesbot/carbon": "^3.8"
     },
     "require-dev": {
-    },
-    "config": {
-        "allow-plugins": {
-            "php-http/discovery": true,
-            "symfony/flex": true,
-            "symfony/runtime": true
-        },
-        "bump-after-update": true,
-        "sort-packages": true
+        "symplify/easy-coding-standard": "^12.3",
+        "rector/rector": "^1.2"
     },
     "autoload": {
         "psr-4": {
-            "App\\": "src/"
+            "KerrialNewham\\Migrator\\": "src"
         }
-    },
-    "autoload-dev": {
-        "psr-4": {
-            "App\\Tests\\": "tests/"
-        }
-    },
-    "replace": {
-        "symfony/polyfill-ctype": "*",
-        "symfony/polyfill-iconv": "*",
-        "symfony/polyfill-php72": "*",
-        "symfony/polyfill-php73": "*",
-        "symfony/polyfill-php74": "*",
-        "symfony/polyfill-php80": "*",
-        "symfony/polyfill-php81": "*",
-        "symfony/polyfill-php82": "*"
     },
     "scripts": {
-        "auto-scripts": {
-            "cache:clear": "symfony-cmd",
-            "assets:install %PUBLIC_DIR%": "symfony-cmd"
-        },
-        "post-install-cmd": [
-            "@auto-scripts"
-        ],
-        "post-update-cmd": [
-            "@auto-scripts"
-        ]
-    },
-    "conflict": {
-        "symfony/symfony": "*"
-    },
-    "extra": {
-        "symfony": {
-            "allow-contrib": false,
-            "require": "7.2.*"
-        }
+        "ps": "vendor/bin/phpstan",
+        "rector": "vendor/bin/rector",
+        "check-cs": "vendor/bin/ecs",
+        "fix-cs": "vendor/bin/ecs --fix"
     }
 }
