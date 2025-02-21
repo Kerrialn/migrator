@@ -256,9 +256,9 @@ class AnalyseCommand extends Command
 
         $io->title('Project Upgradability Scores');
 
-        $io->writeln("\n<fg=green>0-49: Easy</>");
+        $io->writeln("\n<fg=red>0-49: Difficult</>");
         $io->writeln("<fg=yellow>50-79: Medium</>");
-        $io->writeln("<fg=red>80-100: Difficult</>\n");
+        $io->writeln("<fg=green>80-100: Easy</>\n");
 
         $io->table(
             ['Metric', 'Score'],
@@ -272,9 +272,9 @@ class AnalyseCommand extends Command
         );
 
         $difficulty = match (true) {
-            $upgrade->getComplexity() >= 0 && $upgrade->getComplexity() < 50 => "Easy Upgrade",
+            $upgrade->getComplexity() >= 0 && $upgrade->getComplexity() < 50 => "Difficult Upgrade",
             $upgrade->getComplexity() >= 50 && $upgrade->getComplexity() < 80 => "Medium Upgrade",
-            $upgrade->getComplexity() >= 80 && $upgrade->getComplexity() <= 100 => "Difficult Upgrade",
+            $upgrade->getComplexity() >= 80 && $upgrade->getComplexity() <= 100 => "Easy Upgrade",
             default => throw new Exception('Unexpected complexity value'),
         };
 

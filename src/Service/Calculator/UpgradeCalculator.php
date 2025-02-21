@@ -48,13 +48,17 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
         $totalDependencies = count($outdatedDependencies);
         if ($totalDependencies === 0) {
-            return 0;
+            return 100;
         }
 
         $maxPossibleDifference = 10;
         $maxTotalScore = $totalDependencies * $maxPossibleDifference;
+
         $percentageScore = ($totalScore / $maxTotalScore) * 100;
-        return round($percentageScore, 2);
+
+        $score = 100 - $percentageScore;
+
+        return round(max(0, min(100, $score)), 2);
     }
 
     private function getLatestPhpVersion(): ?string
@@ -83,7 +87,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         $currentPhpPackage = $project->getComposer()->getRequire()->findFirst(fn(int $key, Package $package): bool => str_contains($package->getName(), 'php'));
 
         if (!$currentPhpPackage) {
-            return 100;
+            return 0;  // No PHP version found, hard upgrade (or skip entirely)
         }
 
         $currentPhpVersion = $currentPhpPackage->getPackageVersion()->getVersionString();
@@ -92,23 +96,23 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         $majorDiff = $this->getMajorVersionDifference($currentPhpVersion, $latestPhpVersion);
         $minorDiff = $this->getMinorVersionDifference($currentPhpVersion, $latestPhpVersion);
 
-        if ($majorDiff >= 6) {
-            return 100;
-        } elseif ($majorDiff === 5) {
-            return 90;
-        } elseif ($majorDiff === 4) {
-            return 80;
+        // Now invert the logic: higher difference means harder upgrade
+        $score = 100 - ($majorDiff * 15);  // The higher the major difference, the lower the score
+
+        // If the major difference is 0, account for minor differences
+        if ($majorDiff === 0) {
+            $score += $minorDiff * 3;  // Minor diff adds but doesn't overshadow
         }
 
-        $score = 100 - (($majorDiff ** 2) * 5 + ($minorDiff * 2));  // Adjusted to make the scoring more proportional
+        // Ensure the score stays within the 0-100 range
+        $score = max(0, min(100, round($score, 2)));
 
-        $io->progressAdvance(10);
-        return max(0, min(100, round($score, 2)));  // Ensure score is within 0-100 range
+        return $score;
     }
 
     private function getCodebaseSizeUpgradabilityScore(Project $project, SymfonyStyle $io): float
     {
-        $io->info('checking codebase size updatability');
+        $io->info('checking codebase size upgradability');
 
         $phpFiles = $project->getFiles();
         $totalLines = 10000;
@@ -119,14 +123,17 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         }
 
         if ($phpFiles->isEmpty()) {
-            return 0;
+            return 100;
         }
 
         $minLines = 10000;
         $maxLines = 300000;
 
-        $score = round(($totalLines - $minLines) / ($maxLines - $minLines) * 100, 2);
-        return max(0, min(100, $score));
+        $percentageScore = ($totalLines - $minLines) / ($maxLines - $minLines) * 100;
+
+        $score = 100 - $percentageScore;
+
+        return round(max(0, min(100, $score)), 2);
     }
 
     private function getFrameworkVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
@@ -135,7 +142,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         $frameworks = $project->getFrameworks();
 
         if ($frameworks->isEmpty()) {
-            return 0;
+            return 100;  // No frameworks, it's an easy upgrade
         }
 
         $totalScore = 0;
@@ -149,13 +156,15 @@ final readonly class UpgradeCalculator implements CalculatorInterface
             );
 
             if ($targetFrameworkVersion === null) {
-                $score = 100;
+                $score = 100;  // No target version, assume no upgrade (easy)
             } else {
                 $majorDifference = $this->getMajorVersionDifference($currentVersion, $targetFrameworkVersion);
                 $minorDifference = $this->getMinorVersionDifference($currentVersion, $targetFrameworkVersion);
                 $totalVersionDifference = $majorDifference * 10 + $minorDifference * 5;
 
-                $score = round(max(0, 100 - 20 * log(1 + $totalVersionDifference, 2)));
+                // Use a logarithmic function to penalize larger version differences
+                $logDifference = log(1 + $totalVersionDifference, 2);  // Log scale, base 2 for more gradual increase
+                $score = 100 - min(100, round($logDifference * 20));  // Penalize larger differences with a max cap of 100
             }
 
             $totalScore += $score;
@@ -164,7 +173,6 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
         return round($totalScore / $frameworkCount, 2);
     }
-
     private function calculateTotalScore(Project $project): float
     {
         $scores = [
@@ -176,7 +184,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
         $totalWeightedScore = 0;
         foreach (UpgradeCalculationWeightEnum::getWeights() as $name => $weight) {
-            $totalWeightedScore += ($scores[$name] * ($weight / 100));
+            $totalWeightedScore += ($scores[$name] * $weight) / 100;
         }
 
         return round($totalWeightedScore, 2);

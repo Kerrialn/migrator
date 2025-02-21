@@ -4,10 +4,10 @@ namespace KerrialNewham\Migrator\Enum;
 
 enum UpgradeCalculationWeightEnum: int
 {
-    case FRAMEWORK_VERSION = 25;
+    case FRAMEWORK_VERSION = 35;
+    case DEPENDENCIES = 30;
+    case CODEBASE_SIZE = 25;
     case CUSTOM_CODE = 20;
-    case DEPENDENCIES = 15;
-    case CODEBASE_SIZE = 12;
     case LEGACY_PATTERNS = 10;
     case DATABASE_ORM = 8;
     case PHP_VERSION = 7;
