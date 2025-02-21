@@ -115,25 +115,23 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         $io->info('checking codebase size upgradability');
 
         $phpFiles = $project->getFiles();
-        $totalLines = 10000;
+        if ($phpFiles->isEmpty()) {
+            return 0;
+        }
 
+        $totalLines = 0;
         foreach ($phpFiles as $file) {
             $totalLines += count(file($file->getRealPath()));
             $io->progressAdvance();
         }
 
-        if ($phpFiles->isEmpty()) {
-            return 100;
-        }
-
         $minLines = 10000;
         $maxLines = 300000;
 
-        $percentageScore = ($totalLines - $minLines) / ($maxLines - $minLines) * 100;
-
-        $score = 100 - $percentageScore;
-
-        return round(max(0, min(100, $score)), 2);
+        $totalLines = max($minLines, min($totalLines, $maxLines));
+        $relativeSize = log($totalLines - $minLines + 1) / log($maxLines - $minLines + 1);
+        $score = round(100 * (1 - $relativeSize), 2);
+        return max(0, min(100, $score));
     }
 
     private function getFrameworkVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
@@ -173,6 +171,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
         return round($totalScore / $frameworkCount, 2);
     }
+
     private function calculateTotalScore(Project $project): float
     {
         $scores = [
@@ -216,11 +215,11 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
     private function getMajorVersionDifference($currentVersion, $latestVersion): int
     {
-        $currentVersion = preg_replace('/[^0-9.]/', '', (string) $currentVersion);
-        $latestVersion = preg_replace('/[^0-9.]/', '', (string) $latestVersion);
+        $currentVersion = preg_replace('/[^0-9.]/', '', (string)$currentVersion);
+        $latestVersion = preg_replace('/[^0-9.]/', '', (string)$latestVersion);
 
-        $current = explode('.', (string) $currentVersion);
-        $latest = explode('.', (string) $latestVersion);
+        $current = explode('.', (string)$currentVersion);
+        $latest = explode('.', (string)$latestVersion);
 
         $currentMajor = (int)$current[0];
         $latestMajor = (int)$latest[0];
@@ -230,11 +229,11 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
     private function getMinorVersionDifference($currentVersion, $latestVersion): int
     {
-        $currentVersion = preg_replace('/[^0-9.]/', '', (string) $currentVersion);
-        $latestVersion = preg_replace('/[^0-9.]/', '', (string) $latestVersion);
+        $currentVersion = preg_replace('/[^0-9.]/', '', (string)$currentVersion);
+        $latestVersion = preg_replace('/[^0-9.]/', '', (string)$latestVersion);
 
-        $current = explode('.', (string) $currentVersion);
-        $latest = explode('.', (string) $latestVersion);
+        $current = explode('.', (string)$currentVersion);
+        $latest = explode('.', (string)$latestVersion);
 
         $currentMinor = isset($current[1]) ? (int)$current[1] : 0;
         $latestMinor = isset($latest[1]) ? (int)$latest[1] : 0;
