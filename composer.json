@@ -5,11 +5,8 @@
         "symfony/console": "^7.1",
         "symfony/process": "^7.1",
         "phpstan/phpstan": "^1.12",
-        "symfony/event-dispatcher": "^7.2",
         "kerrialn/composer-json-parser": "dev-main",
         "symfony/finder": "^7.2",
-        "symfony/http-foundation": "^7.2",
-        "symfony/http-client": "^7.2",
         "nesbot/carbon": "^3.8"
     },
     "require-dev": {
