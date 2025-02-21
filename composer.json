@@ -6,7 +6,7 @@
         "symfony/process": "^7.1",
         "phpstan/phpstan": "^1.12",
         "kerrialn/composer-json-parser": "dev-main",
-        "symfony/finder": "^7.2",
+        "symfony/finder": "^7.1",
         "nesbot/carbon": "^3.8"
     },
     "require-dev": {
