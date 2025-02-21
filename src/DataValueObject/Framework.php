@@ -2,30 +2,25 @@
 
 namespace KerrialNewham\Migrator\DataValueObject;
 
+use KerrialNewham\ComposerJsonParser\Model\PackageVersion;
 use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 
 final class Framework
 {
-    private string $name;
-    private FrameworkTypeEnum $frameworkTypeEnum;
-    private null|float $certainty = null;
-
     private null|float $daysUntilEndOfLife = null;
 
     /**
      * @param string $name
+     * @param PackageVersion $packageVersion
      * @param FrameworkTypeEnum $frameworkTypeEnum
      * @param float|null $certainty
      */
     public function __construct(
-        string            $name,
-        FrameworkTypeEnum $frameworkTypeEnum,
-        null|float        $certainty = null
-    )
+        private readonly string $name,
+        private readonly PackageVersion $packageVersion,
+        private FrameworkTypeEnum $frameworkTypeEnum,
+        private null|float $certainty = null)
     {
-        $this->name = $name;
-        $this->frameworkTypeEnum = $frameworkTypeEnum;
-        $this->certainty = $certainty;
     }
 
     public function getName(): string
@@ -63,5 +58,9 @@ final class Framework
         $this->daysUntilEndOfLife = $daysUntilEndOfLife;
     }
 
+    public function getPackageVersion(): PackageVersion
+    {
+        return $this->packageVersion;
+    }
 
 }

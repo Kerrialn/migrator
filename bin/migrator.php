@@ -12,5 +12,5 @@ $application = new Application();
 $application->add(new AnalyseCommand(project: new Project()));
 try {
     $application->run();
-} catch (Exception $e) {
+} catch (Exception) {
 }

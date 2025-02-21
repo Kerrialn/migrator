@@ -17,11 +17,8 @@ enum UpgradeCalculationWeightEnum: int
     {
         return [
             self::FRAMEWORK_VERSION->name => self::FRAMEWORK_VERSION->value,
-            self::CUSTOM_CODE->name => self::CUSTOM_CODE->value,
             self::DEPENDENCIES->name => self::DEPENDENCIES->value,
             self::CODEBASE_SIZE->name => self::CODEBASE_SIZE->value,
-            self::LEGACY_PATTERNS->name => self::LEGACY_PATTERNS->value,
-            self::TESTING_CI->name => self::TESTING_CI->value,
         ];
     }
 }

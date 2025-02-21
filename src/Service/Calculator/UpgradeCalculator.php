@@ -2,26 +2,43 @@
 
 namespace KerrialNewham\Migrator\Service\Calculator;
 
-use Carbon\CarbonImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
+use KerrialNewham\ComposerJsonParser\Model\Composer;
 use KerrialNewham\ComposerJsonParser\Model\Package;
+use KerrialNewham\Migrator\DataTransferObject\PackageVersionInfo;
 use KerrialNewham\Migrator\DataTransferObject\Project;
 use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 use KerrialNewham\Migrator\Enum\UpgradeCalculationWeightEnum;
 use KerrialNewham\Migrator\Service\Calculator\Contract\CalculatorInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
 
 final readonly class UpgradeCalculator implements CalculatorInterface
 {
-    public function calculate(Project $project): void
+    public function calculate(Project $project, SymfonyStyle $io): void
+    {
+        $frameworkVersionUpgradabilityScore = $this->getFrameworkVersionUpgradabilityScore($project, $io);
+        $project->getUpgrade()->setFrameworkVersionUpgradabilityScore($frameworkVersionUpgradabilityScore);
+
+        $dependenciesUpgradabilityScore = $this->getDependenciesUpgradabilityScore($project, $io);
+        $project->getUpgrade()->setDependenciesUpgradabilityScore($dependenciesUpgradabilityScore);
+
+        $phpVersionUpgradabilityScore = $this->getPhpVersionUpgradabilityScore($project, $io);
+        $project->getUpgrade()->setPhpVersionUpgradabilityScore($phpVersionUpgradabilityScore);
+
+        $codebaseSizeUpgradabilityScore = $this->getCodebaseSizeUpgradabilityScore($project, $io);
+        $project->getUpgrade()->setCodebaseSizeUpgradabilityScore($codebaseSizeUpgradabilityScore);
+
+        $totalScore = $this->calculateTotalScore(project: $project);
+        $project->getUpgrade()->setComplexity($totalScore);
+    }
+
+    private function calculateTotalScore(Project $project): float
     {
         $scores = [
-            UpgradeCalculationWeightEnum::FRAMEWORK_VERSION->name => $this->getFrameworkVersionScore($project),
-//            UpgradeCalculationWeightEnum::DEPENDENCIES->name => $this->getDependenciesScore($project),
-//            UpgradeCalculationWeightEnum::CUSTOM_CODE->name => $this->getCustomCodeScore($project),
-//            UpgradeCalculationWeightEnum::CODEBASE_SIZE->name => $this->getCodebaseSizeScore($project),
-//            UpgradeCalculationWeightEnum::LEGACY_PATTERNS->name => $this->getLegacyPatternsScore($project),
-//            UpgradeCalculationWeightEnum::DATABASE_ORM->name => $this->getDatabaseOrmScore($project),
-//            UpgradeCalculationWeightEnum::TESTING_CI->name => $this->getTestingCiScore($project),
-//            UpgradeCalculationWeightEnum::PHP_VERSION->name => $this->getPhpVersionScore($project),
+            UpgradeCalculationWeightEnum::FRAMEWORK_VERSION->name => $project->getUpgrade()->getFrameworkVersionUpgradabilityScore(),
+            UpgradeCalculationWeightEnum::DEPENDENCIES->name => $project->getUpgrade()->getDependenciesUpgradabilityScore(),
+            UpgradeCalculationWeightEnum::PHP_VERSION->name => $project->getUpgrade()->getPhpVersionUpgradabilityScore(),
+            UpgradeCalculationWeightEnum::CODEBASE_SIZE->name => $project->getUpgrade()->getCodebaseSizeUpgradabilityScore(),
         ];
 
         $totalWeightedScore = 0;
@@ -29,88 +46,220 @@ final readonly class UpgradeCalculator implements CalculatorInterface
             $totalWeightedScore += ($scores[$name] * ($weight / 100));
         }
 
-        $complexity = round($totalWeightedScore, 2);
-        $project->getTransition()->setComplexity($complexity);
+        return round($totalWeightedScore, 2);
     }
 
-    private function getFrameworkVersionScore(Project $project): int
+    private function getDependenciesUpgradabilityScore(Project $project, SymfonyStyle $io): float
     {
-        return match ($project->getPrimaryFramework()->getFrameworkTypeEnum()) {
-            FrameworkTypeEnum::SYMFONY => $this->calculateSymfonyFrameworkVersionScore($project),
-        };
+        $io->info('checking dependencies upgradability');
+        $outdatedDependencies = $this->getOutdatedDependencies($project->getComposer());
+        $totalScore = 0;
+
+        /**
+         * @var PackageVersionInfo $packageVersionInfo
+         */
+        foreach ($outdatedDependencies as $packageVersionInfo) {
+            $io->progressAdvance();
+            $totalScore += $packageVersionInfo->getDifferenceBetweenVersions();
+        }
+
+        $totalDependencies = count($outdatedDependencies);
+        if ($totalDependencies === 0) {
+            return 0;
+        }
+
+        $maxPossibleDifference = 10;
+        $maxTotalScore = $totalDependencies * $maxPossibleDifference;
+        $percentageScore = ($totalScore / $maxTotalScore) * 100;
+        return round($percentageScore, 2);
     }
 
-    private function getDependenciesScore(Project $project): int
+    private function getOutdatedDependencies(Composer $composer): ArrayCollection
     {
-        return count($project->getOutdatedDependencies()) > 10 ? 80 : 40;
-    }
+        /**
+         * @var ArrayCollection<int, PackageVersionInfo> $outdatedPackages
+         */
+        $outdatedPackages = new ArrayCollection();
 
-    private function getCustomCodeScore(Project $project): int
-    {
-        return $project->hasCustomOverrides() ? 90 : 30;
-    }
+        foreach ($composer->getRequire() as $package) {
+            if (str_contains('php', $package->getName()) || empty($package->getPackageVersion())) {
+                continue;
+            }
 
-    private function getCodebaseSizeScore(Project $project): int
-    {
-        return min(100, $project->getCodebaseSize() / 5000 * 100);
-    }
-
-    private function getLegacyPatternsScore(Project $project): int
-    {
-        return $project->usesLegacyPatterns() ? 80 : 20;
-    }
-
-    private function getDatabaseOrmScore(Project $project): int
-    {
-        return $project->hasDatabaseBreakingChanges() ? 85 : 40;
-    }
-
-    private function getTestingCiScore(Project $project): int
-    {
-        return $project->hasTests() ? 20 : 80;
-    }
-
-    private function getPhpVersionScore(Project $project): int
-    {
-        return $project->isPhpVersionOutdated() ? 90 : 30;
-    }
-
-    private function calculateSymfonyFrameworkVersionScore(Project $project): int
-    {
-        $symfonyFrameworkPackage = $project->getComposer()->getRequire()->findFirst(
-            fn(int $key, Package $package) => $package->getName() === $project->getPrimaryFramework()
-        );
-
-        var_dump($symfonyFrameworkPackage);
-        exit();
-
-        $url = 'https://endoflife.date/api/symfony.json';
-        $response = file_get_contents($url);
-        $versions = json_decode($response, true);
-
-        foreach ($versions as $version) {
-            $installedVersion = (string)$symfonyFrameworkPackage->getPackageVersion()->getVersion();
-            $latestVersion = $version['latest'];
-
-            if (str_starts_with($latestVersion, $installedVersion)) {
-                $endOfLifeAt = CarbonImmutable::parse($version['eol']);
-                $now = CarbonImmutable::now();
-
-                $daysUntilEOL = round($now->diffInDays($endOfLifeAt, false),2 );
-                $project->getPrimaryFramework()->setDaysUntilEndOfLife($daysUntilEOL);
-
-                return match (true) {
-                    $daysUntilEOL <= 0 => 100,
-                    $daysUntilEOL <= 30 => 90,
-                    $daysUntilEOL <= 90 => 75,
-                    $daysUntilEOL <= 180 => 50,
-                    $daysUntilEOL <= 365 => 30,
-                    default => 10,
-                };
+            $latestVersion = $this->getLatestPackageVersion($package->getName());
+            if ($latestVersion && version_compare($package->getPackageVersion()->getVersionString(), $latestVersion, '<')) {
+                $differenceBetweenVersions = $this->getMajorVersionDifference(currentVersion: $package->getPackageVersion()->getVersion(), latestVersion: $latestVersion);
+                $outdatedPackages->add(
+                    new PackageVersionInfo(packageName: $package->getName(), currentVersion: $package->getPackageVersion()->getVersionString(), latestVersion: $latestVersion, differenceBetweenVersions: $differenceBetweenVersions)
+                );
             }
         }
 
-        return 100;
+        return $outdatedPackages;
+    }
+
+    private function getMajorVersionDifference($currentVersion, $latestVersion): int
+    {
+        $currentVersion = preg_replace('/[^0-9.]/', '', $currentVersion);
+        $latestVersion = preg_replace('/[^0-9.]/', '', $latestVersion);
+
+        $current = explode('.', $currentVersion);
+        $latest = explode('.', $latestVersion);
+
+        $currentMajor = (int)$current[0];
+        $latestMajor = (int)$latest[0];
+
+        return abs($latestMajor - $currentMajor);
+    }
+
+    private function getMinorVersionDifference($currentVersion, $latestVersion): int
+    {
+        $currentVersion = preg_replace('/[^0-9.]/', '', $currentVersion);
+        $latestVersion = preg_replace('/[^0-9.]/', '', $latestVersion);
+
+        $current = explode('.', $currentVersion);
+        $latest = explode('.', $latestVersion);
+
+        $currentMinor = isset($current[1]) ? (int)$current[1] : 0;
+        $latestMinor = isset($latest[1]) ? (int)$latest[1] : 0;
+
+        return abs($latestMinor - $currentMinor);
+    }
+
+    private function getLatestPackageVersion(string $packageName): ?string
+    {
+        if (str_contains($packageName, 'ext')) {
+            return null;
+        }
+
+        $packagistUrl = "https://repo.packagist.org/p2/{$packageName}.json";
+
+        try {
+            $response = file_get_contents($packagistUrl);
+            if (!$response) {
+                return null;
+            }
+
+            $data = json_decode($response, true);
+            if (!isset($data['packages'][$packageName])) {
+                return null;
+            }
+
+            $versions = array_map(fn($package) => $package['version_normalized'], $data['packages'][$packageName]);
+
+            usort($versions, 'version_compare');
+            return end($versions);
+        } catch (\Exception $e) {
+            return null;
+        }
+    }
+
+    private function getPhpVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
+    {
+        $io->info('checking PHP version upgradablitiy');
+        $currentPhpPackage = $project->getComposer()->getRequire()->findFirst(fn(int $key, Package $package) => str_contains($package->getName(), 'php'));
+
+        if (!$currentPhpPackage) {
+            return 100;
+        }
+
+        $currentPhpVersion = $currentPhpPackage->getPackageVersion()->getVersionString();
+        $latestPhpVersion = $this->getLatestPhpVersion();
+
+        $majorDiff = $this->getMajorVersionDifference($currentPhpVersion, $latestPhpVersion);
+        $minorDiff = $this->getMinorVersionDifference($currentPhpVersion, $latestPhpVersion);
+
+        if ($majorDiff >= 6) {
+            return 100;
+        } elseif ($majorDiff === 5) {
+            return 90;
+        } elseif ($majorDiff === 4) {
+            return 80;
+        }
+
+        $score = ($majorDiff ** 2) * 7 + ($minorDiff * 1.5);
+        $io->progressAdvance(10);
+        return min(100, round($score, 2));
+    }
+
+
+    private function getLatestPhpVersion(): ?string
+    {
+        $url = "https://www.php.net/releases/?json";
+        $response = file_get_contents($url);
+
+        if ($response === false) {
+            return null;
+        }
+
+        $data = json_decode($response, true);
+        $latestVersion = '';
+        foreach ($data as $majorVersion => $details) {
+            if (!empty($details['version']) && version_compare($details['version'], $latestVersion, '>')) {
+                $latestVersion = $details['version'];
+            }
+        }
+
+        return $latestVersion ?: null;
+    }
+
+    private function getCodebaseSizeUpgradabilityScore(Project $project, SymfonyStyle $io): float
+    {
+        $io->info('checking codebase size updatability');
+
+        $phpFiles = $project->getFiles();
+        $totalLines = 10000;
+
+        foreach ($phpFiles as $file) {
+            $totalLines += count(file($file->getRealPath()));
+            $io->progressAdvance();
+        }
+
+        if ($phpFiles->isEmpty()) {
+            return 0;
+        }
+
+        $minLines = 10000;
+        $maxLines = 300000;
+
+        $score = round(($totalLines - $minLines) / ($maxLines - $minLines) * 100, 2);
+        return max(0, min(100, $score));
+    }
+
+
+    private function getFrameworkVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
+    {
+        $io->info('checking framework upgradability');
+        $frameworks = $project->getFrameworks();
+
+        if ($frameworks->isEmpty()) {
+            return 0.0;
+        }
+
+        $totalScore = 0;
+        $frameworkCount = count($frameworks);
+
+        foreach ($frameworks as $framework) {
+            $currentVersion = $framework->getPackageVersion()->getVersionString();
+            $targetFrameworkVersion = FrameworkTypeEnum::getTargetFrameworkVersion(
+                $framework->getFrameworkTypeEnum(),
+                $project->getUpgrade()->getTargetPhpVersion()
+            );
+
+            if ($targetFrameworkVersion === null) {
+                $score = 100;
+            } else {
+                $majorDifference = $this->getMajorVersionDifference($currentVersion, $targetFrameworkVersion);
+                $minorDifference = $this->getMinorVersionDifference($currentVersion, $targetFrameworkVersion);
+                $totalVersionDifference = $majorDifference * 10 + $minorDifference * 5;
+                $score = round(min(100, 20 * log(1 + $totalVersionDifference, 2)));
+            }
+
+            $totalScore += $score;
+            $io->progressAdvance();
+        }
+
+        return round($totalScore / $frameworkCount, 2);
     }
 
 }

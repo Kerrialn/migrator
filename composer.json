@@ -6,7 +6,6 @@
         "symfony/process": "^7.1",
         "phpstan/phpstan": "^1.12",
         "symfony/event-dispatcher": "^7.2",
-        "symfony/framework-bundle": "^7.2",
         "kerrialn/composer-json-parser": "dev-main",
         "symfony/finder": "^7.2",
         "symfony/http-foundation": "^7.2",
@@ -23,7 +22,7 @@
         }
     },
     "scripts": {
-        "ps": "vendor/bin/phpstan",
+        "ps": "vendor/bin/phpstan --memory-limit=-1",
         "rector": "vendor/bin/rector",
         "check-cs": "vendor/bin/ecs",
         "fix-cs": "vendor/bin/ecs --fix"

@@ -6,28 +6,31 @@ use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use KerrialNewham\ComposerJsonParser\Model\Composer;
 use KerrialNewham\Migrator\DataValueObject\Framework;
+use KerrialNewham\Migrator\Enum\TransitionTypeEnum;
 use Symfony\Component\Finder\SplFileInfo;
 
 final class Project
 {
     private string $path;
-    private null|Composer $composer;
+    private null|Composer $composer = null;
     /**
      * @var Collection<int,Framework> $frameworks
      */
-    private Collection $frameworks;
+    private readonly Collection $frameworks;
 
     /**
      * @var Collection<int,SplFileInfo> $projectPhpFiles
      */
-    private Collection $files;
-    private Transition $transition;
+    private readonly Collection $files;
+
+    private null|TransitionTypeEnum $transitionTypeEnum = null;
+    private null|Migration $migration = null;
+    private null|Upgrade $upgrade = null;
 
     public function __construct()
     {
         $this->files = new ArrayCollection();
         $this->frameworks = new ArrayCollection();
-        $this->transition = new Transition();
     }
 
     public function getPath(): string
@@ -102,21 +105,42 @@ final class Project
         $this->composer = $composer;
     }
 
-    public function getTransition(): Transition
-    {
-        return $this->transition;
-    }
-
-    public function setTransition(Transition $transition): void
-    {
-        $this->transition = $transition;
-    }
-
     public function getPrimaryFramework(): null|Framework
     {
         return $this->frameworks->isEmpty() ? null : $this->frameworks->reduce(
-            fn (?Framework $carry, Framework $framework) =>
+            fn (?Framework $carry, Framework $framework): \KerrialNewham\Migrator\DataValueObject\Framework =>
             ($carry === null || $framework->getCertainty() > $carry->getCertainty()) ? $framework : $carry
         );
     }
+
+    public function getTransitionTypeEnum(): ?TransitionTypeEnum
+    {
+        return $this->transitionTypeEnum;
+    }
+
+    public function setTransitionTypeEnum(?TransitionTypeEnum $transitionTypeEnum): void
+    {
+        $this->transitionTypeEnum = $transitionTypeEnum;
+    }
+
+    public function getMigration(): ?Migration
+    {
+        return $this->migration;
+    }
+
+    public function setMigration(?Migration $migration): void
+    {
+        $this->migration = $migration;
+    }
+
+    public function getUpgrade(): ?Upgrade
+    {
+        return $this->upgrade;
+    }
+
+    public function setUpgrade(?Upgrade $upgrade): void
+    {
+        $this->upgrade = $upgrade;
+    }
+
 }

@@ -832,12 +832,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/Kerrialn/composer-json-parser.git",
-                "reference": "44f315ce858ff8c376781c39787a364de0b4b228"
+                "reference": "499e541b73414d3c087fe991c457cd5dbd499de2"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/Kerrialn/composer-json-parser/zipball/44f315ce858ff8c376781c39787a364de0b4b228",
-                "reference": "44f315ce858ff8c376781c39787a364de0b4b228",
+                "url": "https://api.github.com/repos/Kerrialn/composer-json-parser/zipball/499e541b73414d3c087fe991c457cd5dbd499de2",
+                "reference": "499e541b73414d3c087fe991c457cd5dbd499de2",
                 "shasum": ""
             },
             "require": {
@@ -866,7 +866,7 @@
                 "issues": "https://github.com/Kerrialn/composer-json-parser/issues",
                 "source": "https://github.com/Kerrialn/composer-json-parser/tree/main"
             },
-            "time": "2025-02-18T19:22:27+00:00"
+            "time": "2025-02-20T21:49:32+00:00"
         },
         {
             "name": "nesbot/carbon",
