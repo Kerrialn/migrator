@@ -2,7 +2,6 @@
 
 namespace KerrialNewham\Migrator\Enum;
 
-use Doctrine\Common\Collections\ArrayCollection;
 
 enum FrameworkTypeEnum: string
 {

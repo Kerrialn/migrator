@@ -2,19 +2,10 @@
 
 namespace KerrialNewham\Migrator\DataTransferObject;
 
-final class PackageVersionInfo
+final readonly class PackageVersionInfo
 {
-    private string $packageName;
-    private string $currentVersion;
-    private string $latestVersion;
-    private int $differenceBetweenVersions;
-
-    public function __construct(string $packageName, string $currentVersion, string $latestVersion, int $differenceBetweenVersions)
+    public function __construct(private string $packageName, private string $currentVersion, private string $latestVersion, private int $differenceBetweenVersions)
     {
-        $this->packageName = $packageName;
-        $this->currentVersion = $currentVersion;
-        $this->latestVersion = $latestVersion;
-        $this->differenceBetweenVersions = $differenceBetweenVersions;
     }
 
     public function getPackageName(): string

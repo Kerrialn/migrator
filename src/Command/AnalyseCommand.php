@@ -8,7 +8,6 @@ use Exception;
 use KerrialNewham\ComposerJsonParser\Exception\ComposerJsonNotFoundException;
 use KerrialNewham\ComposerJsonParser\Model\Composer;
 use KerrialNewham\ComposerJsonParser\Model\Package;
-use KerrialNewham\ComposerJsonParser\Model\PackageVersion;
 use KerrialNewham\ComposerJsonParser\Parser;
 use KerrialNewham\Migrator\Data\Frameworks;
 use KerrialNewham\Migrator\DataTransferObject\Migration;
@@ -134,7 +133,7 @@ class AnalyseCommand extends Command
 
         foreach ($detectedFrameworks as $framework) {
             $package = $composer->getRequire()->findFirst(
-                fn(int $key, Package $package) => $package->getName() === $framework->getName()
+                fn(int $key, Package $package): bool => $package->getName() === $framework->getName()
             );
 
             if (!$package) {
@@ -156,20 +155,20 @@ class AnalyseCommand extends Command
     {
         $frameworks = Frameworks::getFrameworks();
         $selectedFrameworks = $frameworks->filter(
-            fn(FrameworkPackage $framework) => $framework->getType() === $frameworkType
+            fn(FrameworkPackage $framework): bool => $framework->getType() === $frameworkType
         );
 
         $totalWeight = 0;
 
         foreach ($selectedFrameworks as $framework) {
-            if ($composer->getRequire()->exists(fn(int $key, Package $package) => $package->getName() === $framework->getName())) {
+            if ($composer->getRequire()->exists(fn(int $key, Package $package): bool => $package->getName() === $framework->getName())) {
                 $totalWeight += $framework->getWeight();
             }
 
-            $matchingExtras = $framework->getFrameworkPackages()->filter(fn(FrameworkPackage $extraPackage) => $composer->getRequire()->exists(fn(int $key, Package $package) => $package->getName() === $extraPackage->getName())
+            $matchingExtras = $framework->getFrameworkPackages()->filter(fn(FrameworkPackage $extraPackage) => $composer->getRequire()->exists(fn(int $key, Package $package): bool => $package->getName() === $extraPackage->getName())
             );
 
-            $extraWeight = array_sum($matchingExtras->map(fn(FrameworkPackage $extraPackage) => $extraPackage->getWeight())->toArray());
+            $extraWeight = array_sum($matchingExtras->map(fn(FrameworkPackage $extraPackage): int => $extraPackage->getWeight())->toArray());
             $totalWeight += $extraWeight;
         }
 

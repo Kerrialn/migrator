@@ -100,11 +100,11 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
     private function getMajorVersionDifference($currentVersion, $latestVersion): int
     {
-        $currentVersion = preg_replace('/[^0-9.]/', '', $currentVersion);
-        $latestVersion = preg_replace('/[^0-9.]/', '', $latestVersion);
+        $currentVersion = preg_replace('/[^0-9.]/', '', (string) $currentVersion);
+        $latestVersion = preg_replace('/[^0-9.]/', '', (string) $latestVersion);
 
-        $current = explode('.', $currentVersion);
-        $latest = explode('.', $latestVersion);
+        $current = explode('.', (string) $currentVersion);
+        $latest = explode('.', (string) $latestVersion);
 
         $currentMajor = (int)$current[0];
         $latestMajor = (int)$latest[0];
@@ -114,11 +114,11 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
     private function getMinorVersionDifference($currentVersion, $latestVersion): int
     {
-        $currentVersion = preg_replace('/[^0-9.]/', '', $currentVersion);
-        $latestVersion = preg_replace('/[^0-9.]/', '', $latestVersion);
+        $currentVersion = preg_replace('/[^0-9.]/', '', (string) $currentVersion);
+        $latestVersion = preg_replace('/[^0-9.]/', '', (string) $latestVersion);
 
-        $current = explode('.', $currentVersion);
-        $latest = explode('.', $latestVersion);
+        $current = explode('.', (string) $currentVersion);
+        $latest = explode('.', (string) $latestVersion);
 
         $currentMinor = isset($current[1]) ? (int)$current[1] : 0;
         $latestMinor = isset($latest[1]) ? (int)$latest[1] : 0;
@@ -145,11 +145,11 @@ final readonly class UpgradeCalculator implements CalculatorInterface
                 return null;
             }
 
-            $versions = array_map(fn($package) => $package['version_normalized'], $data['packages'][$packageName]);
+            $versions = array_map(fn($package): mixed => $package['version_normalized'], $data['packages'][$packageName]);
 
             usort($versions, 'version_compare');
             return end($versions);
-        } catch (\Exception $e) {
+        } catch (\Exception) {
             return null;
         }
     }
@@ -157,7 +157,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
     private function getPhpVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
     {
         $io->info('checking PHP version upgradablitiy');
-        $currentPhpPackage = $project->getComposer()->getRequire()->findFirst(fn(int $key, Package $package) => str_contains($package->getName(), 'php'));
+        $currentPhpPackage = $project->getComposer()->getRequire()->findFirst(fn(int $key, Package $package): bool => str_contains($package->getName(), 'php'));
 
         if (!$currentPhpPackage) {
             return 100;
