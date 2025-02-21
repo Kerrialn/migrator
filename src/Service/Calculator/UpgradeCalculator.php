@@ -116,7 +116,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
         $phpFiles = $project->getFiles();
         if ($phpFiles->isEmpty()) {
-            return 0;
+            return 100;
         }
 
         $totalLines = 0;
@@ -125,12 +125,12 @@ final readonly class UpgradeCalculator implements CalculatorInterface
             $io->progressAdvance();
         }
 
-        $minLines = 10000;
-        $maxLines = 300000;
-
+        $minLines = 5000;
+        $maxLines = 500000;
         $totalLines = max($minLines, min($totalLines, $maxLines));
-        $relativeSize = log($totalLines - $minLines + 1) / log($maxLines - $minLines + 1);
-        $score = round(100 * (1 - $relativeSize), 2);
+        $normalizedSize = log($maxLines - $totalLines + 1) / log($maxLines - $minLines + 1);
+        $score = round($normalizedSize * 100, 2);
+
         return max(0, min(100, $score));
     }
 
