@@ -32,23 +32,6 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         $project->getUpgrade()->setComplexity($totalScore);
     }
 
-    private function calculateTotalScore(Project $project): float
-    {
-        $scores = [
-            UpgradeCalculationWeightEnum::FRAMEWORK_VERSION->name => $project->getUpgrade()->getFrameworkVersionUpgradabilityScore(),
-            UpgradeCalculationWeightEnum::DEPENDENCIES->name => $project->getUpgrade()->getDependenciesUpgradabilityScore(),
-            UpgradeCalculationWeightEnum::PHP_VERSION->name => $project->getUpgrade()->getPhpVersionUpgradabilityScore(),
-            UpgradeCalculationWeightEnum::CODEBASE_SIZE->name => $project->getUpgrade()->getCodebaseSizeUpgradabilityScore(),
-        ];
-
-        $totalWeightedScore = 0;
-        foreach (UpgradeCalculationWeightEnum::getWeights() as $name => $weight) {
-            $totalWeightedScore += ($scores[$name] * ($weight / 100));
-        }
-
-        return round($totalWeightedScore, 2);
-    }
-
     private function getDependenciesUpgradabilityScore(Project $project, SymfonyStyle $io): float
     {
         $io->info('checking dependencies upgradability');
@@ -72,6 +55,131 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         $maxTotalScore = $totalDependencies * $maxPossibleDifference;
         $percentageScore = ($totalScore / $maxTotalScore) * 100;
         return round($percentageScore, 2);
+    }
+
+    private function getLatestPhpVersion(): ?string
+    {
+        $url = "https://www.php.net/releases/?json";
+        $response = file_get_contents($url);
+
+        if ($response === false) {
+            return null;
+        }
+
+        $data = json_decode($response, true);
+        $latestVersion = '';
+        foreach ($data as $majorVersion => $details) {
+            if (!empty($details['version']) && version_compare($details['version'], $latestVersion, '>')) {
+                $latestVersion = $details['version'];
+            }
+        }
+
+        return $latestVersion ?: null;
+    }
+
+    private function getPhpVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
+    {
+        $io->info('checking PHP version upgradability');
+        $currentPhpPackage = $project->getComposer()->getRequire()->findFirst(fn(int $key, Package $package): bool => str_contains($package->getName(), 'php'));
+
+        if (!$currentPhpPackage) {
+            return 100;
+        }
+
+        $currentPhpVersion = $currentPhpPackage->getPackageVersion()->getVersionString();
+        $latestPhpVersion = $this->getLatestPhpVersion();
+
+        $majorDiff = $this->getMajorVersionDifference($currentPhpVersion, $latestPhpVersion);
+        $minorDiff = $this->getMinorVersionDifference($currentPhpVersion, $latestPhpVersion);
+
+        if ($majorDiff >= 6) {
+            return 100;
+        } elseif ($majorDiff === 5) {
+            return 90;
+        } elseif ($majorDiff === 4) {
+            return 80;
+        }
+
+        $score = 100 - (($majorDiff ** 2) * 5 + ($minorDiff * 2));  // Adjusted to make the scoring more proportional
+
+        $io->progressAdvance(10);
+        return max(0, min(100, round($score, 2)));  // Ensure score is within 0-100 range
+    }
+
+    private function getCodebaseSizeUpgradabilityScore(Project $project, SymfonyStyle $io): float
+    {
+        $io->info('checking codebase size updatability');
+
+        $phpFiles = $project->getFiles();
+        $totalLines = 10000;
+
+        foreach ($phpFiles as $file) {
+            $totalLines += count(file($file->getRealPath()));
+            $io->progressAdvance();
+        }
+
+        if ($phpFiles->isEmpty()) {
+            return 0;
+        }
+
+        $minLines = 10000;
+        $maxLines = 300000;
+
+        $score = round(($totalLines - $minLines) / ($maxLines - $minLines) * 100, 2);
+        return max(0, min(100, $score));
+    }
+
+    private function getFrameworkVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
+    {
+        $io->info('checking framework upgradability');
+        $frameworks = $project->getFrameworks();
+
+        if ($frameworks->isEmpty()) {
+            return 0;
+        }
+
+        $totalScore = 0;
+        $frameworkCount = count($frameworks);
+
+        foreach ($frameworks as $framework) {
+            $currentVersion = $framework->getPackageVersion()->getVersionString();
+            $targetFrameworkVersion = FrameworkTypeEnum::getTargetFrameworkVersion(
+                $framework->getFrameworkTypeEnum(),
+                $project->getUpgrade()->getTargetPhpVersion()
+            );
+
+            if ($targetFrameworkVersion === null) {
+                $score = 100;
+            } else {
+                $majorDifference = $this->getMajorVersionDifference($currentVersion, $targetFrameworkVersion);
+                $minorDifference = $this->getMinorVersionDifference($currentVersion, $targetFrameworkVersion);
+                $totalVersionDifference = $majorDifference * 10 + $minorDifference * 5;
+
+                $score = round(max(0, 100 - 20 * log(1 + $totalVersionDifference, 2)));
+            }
+
+            $totalScore += $score;
+            $io->progressAdvance();
+        }
+
+        return round($totalScore / $frameworkCount, 2);
+    }
+
+    private function calculateTotalScore(Project $project): float
+    {
+        $scores = [
+            UpgradeCalculationWeightEnum::FRAMEWORK_VERSION->name => $project->getUpgrade()->getFrameworkVersionUpgradabilityScore(),
+            UpgradeCalculationWeightEnum::DEPENDENCIES->name => $project->getUpgrade()->getDependenciesUpgradabilityScore(),
+            UpgradeCalculationWeightEnum::PHP_VERSION->name => $project->getUpgrade()->getPhpVersionUpgradabilityScore(),
+            UpgradeCalculationWeightEnum::CODEBASE_SIZE->name => $project->getUpgrade()->getCodebaseSizeUpgradabilityScore(),
+        ];
+
+        $totalWeightedScore = 0;
+        foreach (UpgradeCalculationWeightEnum::getWeights() as $name => $weight) {
+            $totalWeightedScore += ($scores[$name] * ($weight / 100));
+        }
+
+        return round($totalWeightedScore, 2);
     }
 
     private function getOutdatedDependencies(Composer $composer): ArrayCollection
@@ -152,114 +260,6 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         } catch (\Exception) {
             return null;
         }
-    }
-
-    private function getPhpVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
-    {
-        $io->info('checking PHP version upgradablitiy');
-        $currentPhpPackage = $project->getComposer()->getRequire()->findFirst(fn(int $key, Package $package): bool => str_contains($package->getName(), 'php'));
-
-        if (!$currentPhpPackage) {
-            return 100;
-        }
-
-        $currentPhpVersion = $currentPhpPackage->getPackageVersion()->getVersionString();
-        $latestPhpVersion = $this->getLatestPhpVersion();
-
-        $majorDiff = $this->getMajorVersionDifference($currentPhpVersion, $latestPhpVersion);
-        $minorDiff = $this->getMinorVersionDifference($currentPhpVersion, $latestPhpVersion);
-
-        if ($majorDiff >= 6) {
-            return 100;
-        } elseif ($majorDiff === 5) {
-            return 90;
-        } elseif ($majorDiff === 4) {
-            return 80;
-        }
-
-        $score = ($majorDiff ** 2) * 7 + ($minorDiff * 1.5);
-        $io->progressAdvance(10);
-        return min(100, round($score, 2));
-    }
-
-
-    private function getLatestPhpVersion(): ?string
-    {
-        $url = "https://www.php.net/releases/?json";
-        $response = file_get_contents($url);
-
-        if ($response === false) {
-            return null;
-        }
-
-        $data = json_decode($response, true);
-        $latestVersion = '';
-        foreach ($data as $majorVersion => $details) {
-            if (!empty($details['version']) && version_compare($details['version'], $latestVersion, '>')) {
-                $latestVersion = $details['version'];
-            }
-        }
-
-        return $latestVersion ?: null;
-    }
-
-    private function getCodebaseSizeUpgradabilityScore(Project $project, SymfonyStyle $io): float
-    {
-        $io->info('checking codebase size updatability');
-
-        $phpFiles = $project->getFiles();
-        $totalLines = 10000;
-
-        foreach ($phpFiles as $file) {
-            $totalLines += count(file($file->getRealPath()));
-            $io->progressAdvance();
-        }
-
-        if ($phpFiles->isEmpty()) {
-            return 0;
-        }
-
-        $minLines = 10000;
-        $maxLines = 300000;
-
-        $score = round(($totalLines - $minLines) / ($maxLines - $minLines) * 100, 2);
-        return max(0, min(100, $score));
-    }
-
-
-    private function getFrameworkVersionUpgradabilityScore(Project $project, SymfonyStyle $io): float
-    {
-        $io->info('checking framework upgradability');
-        $frameworks = $project->getFrameworks();
-
-        if ($frameworks->isEmpty()) {
-            return 0.0;
-        }
-
-        $totalScore = 0;
-        $frameworkCount = count($frameworks);
-
-        foreach ($frameworks as $framework) {
-            $currentVersion = $framework->getPackageVersion()->getVersionString();
-            $targetFrameworkVersion = FrameworkTypeEnum::getTargetFrameworkVersion(
-                $framework->getFrameworkTypeEnum(),
-                $project->getUpgrade()->getTargetPhpVersion()
-            );
-
-            if ($targetFrameworkVersion === null) {
-                $score = 100;
-            } else {
-                $majorDifference = $this->getMajorVersionDifference($currentVersion, $targetFrameworkVersion);
-                $minorDifference = $this->getMinorVersionDifference($currentVersion, $targetFrameworkVersion);
-                $totalVersionDifference = $majorDifference * 10 + $minorDifference * 5;
-                $score = round(min(100, 20 * log(1 + $totalVersionDifference, 2)));
-            }
-
-            $totalScore += $score;
-            $io->progressAdvance();
-        }
-
-        return round($totalScore / $frameworkCount, 2);
     }
 
 }
