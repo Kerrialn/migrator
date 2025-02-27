@@ -158,11 +158,10 @@ final readonly class UpgradeCalculator implements CalculatorInterface
             } else {
                 $majorDifference = $this->getMajorVersionDifference($currentVersion, $targetFrameworkVersion);
                 $minorDifference = $this->getMinorVersionDifference($currentVersion, $targetFrameworkVersion);
-                $totalVersionDifference = $majorDifference * 10 + $minorDifference * 5;
+                $totalVersionDifference = $majorDifference * 50 + $minorDifference * 2;
 
-                // Use a logarithmic function to penalize larger version differences
-                $logDifference = log(1 + $totalVersionDifference, 2);  // Log scale, base 2 for more gradual increase
-                $score = 100 - min(100, round($logDifference * 20));  // Penalize larger differences with a max cap of 100
+                $logDifference = log(1 + $totalVersionDifference, 3); // Base 3 reduces penalty for small differences
+                $score = 100 - min(100, round($logDifference * 5)); // Reduce the weight of the penalty
             }
 
             $totalScore += $score;
@@ -172,7 +171,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         return round($totalScore / $frameworkCount, 2);
     }
 
-    private function calculateTotalScore(Project $project): float
+    public function calculateTotalScore(Project $project): float
     {
         $scores = [
             UpgradeCalculationWeightEnum::FRAMEWORK_VERSION->name => $project->getUpgrade()->getFrameworkVersionUpgradabilityScore(),
