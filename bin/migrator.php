@@ -3,15 +3,27 @@
 declare(strict_types=1);
 
 use KerrialNewham\Migrator\Command\AnalyseCommand;
+use KerrialNewham\Migrator\Command\Psr4AutoloaderConverterCommand;
 use KerrialNewham\Migrator\Command\ReplacerCommand;
+use KerrialNewham\Migrator\Config\Config;
 use KerrialNewham\Migrator\DataTransferObject\Project;
 use Symfony\Component\Console\Application;
 
-require __DIR__ . '/../../../autoload.php';
+//require(__DIR__ . '/../../../autoload.php');
+require __DIR__ . '/../vendor/autoload.php';
+$file = getcwd() . '/migrator.php';
+
+if (!file_exists($file)) {
+    throw new Exception("Configuration file not found: $file");
+}
+
+/** @var Config $config */
+$config = require $file;
 
 $application = new Application();
-$application->add(new AnalyseCommand(project: new Project()));
-$application->add(new ReplacerCommand());
+$application->add(new AnalyseCommand(project: new Project(), config: $config));
+$application->add(new ReplacerCommand(config: $config));
+$application->add(new Psr4AutoloaderConverterCommand(project: new Project(), config: $config));
 try {
     $application->run();
 } catch (Exception) {

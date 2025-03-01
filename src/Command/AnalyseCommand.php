@@ -9,6 +9,7 @@ use KerrialNewham\ComposerJsonParser\Exception\ComposerJsonNotFoundException;
 use KerrialNewham\ComposerJsonParser\Model\Composer;
 use KerrialNewham\ComposerJsonParser\Model\Package;
 use KerrialNewham\ComposerJsonParser\Parser;
+use KerrialNewham\Migrator\Config\Config;
 use KerrialNewham\Migrator\Data\Frameworks;
 use KerrialNewham\Migrator\DataTransferObject\Migration;
 use KerrialNewham\Migrator\DataTransferObject\Project;
@@ -34,6 +35,7 @@ class AnalyseCommand extends Command
 
     public function __construct(
         private readonly Project $project,
+        private readonly Config $config,
     )
     {
         parent::__construct();

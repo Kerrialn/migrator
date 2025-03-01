@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace KerrialNewham\Migrator\Command;
 
+use KerrialNewham\Migrator\Config\Config;
+use KerrialNewham\Migrator\DataTransferObject\Project;
 use KerrialNewham\Migrator\Service\Replacer\IfStatementMissingBracketsReplacer;
 use KerrialNewham\Migrator\Service\Replacer\ShortTagReplacer;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -16,6 +18,12 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'replace', aliases: ['fix'])]
 class ReplacerCommand extends Command
 {
+    public function __construct(
+        private readonly Config  $config
+    )
+    {
+        parent::__construct();
+    }
     protected function configure(): void
     {
         $this->addArgument('action', InputArgument::REQUIRED, 'The action to perform (e.g., replace:php-short-tags, replace:old-if-syntax)');
