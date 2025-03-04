@@ -16,7 +16,7 @@ class ShortTagReplacer implements ReplacerInterface
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir));
 
         foreach ($files as $file) {
-            if ($file->isFile() && pathinfo($file->getRealPath(), PATHINFO_EXTENSION) === 'php') {
+            if ($file->isFile() && pathinfo((string) $file->getRealPath(), PATHINFO_EXTENSION) === 'php') {
                 $content = file_get_contents($file->getRealPath());
 
                 if (preg_match('/^<\?(php|xml)/', $content)) {

@@ -4,15 +4,11 @@ namespace KerrialNewham\Migrator\Command;
 
 use DateTimeImmutable;
 use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\DBAL\Driver\Mysqli\Initializer\Options;
-use KerrialNewham\ComposerJsonParser\Exception\ComposerJsonNotFoundException;
-use KerrialNewham\ComposerJsonParser\Parser;
 use KerrialNewham\Migrator\Config\Config;
 use KerrialNewham\Migrator\DataTransferObject\Project;
 use KerrialNewham\Migrator\DataTransferObject\Route;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -32,7 +28,7 @@ class RoutesExtractorCommand extends Command
     public function __construct(
         private readonly Project  $project,
         private readonly Config   $config,
-        private ArrayCollection   $routes,
+        private readonly ArrayCollection   $routes,
         private null|SymfonyStyle $io = null
     )
     {
@@ -91,7 +87,7 @@ class RoutesExtractorCommand extends Command
     private function extractRoutesFromFile($file): void
     {
         $content = $file->getContents();
-        preg_match_all('/\$route\[\'(.*?)\'\] = \'(.*?)\'/', $content, $matches, PREG_SET_ORDER);
+        preg_match_all('/\$route\[\'(.*?)\'\] = \'(.*?)\'/', (string) $content, $matches, PREG_SET_ORDER);
 
         foreach ($matches as $match) {
             $this->routes->add(

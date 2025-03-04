@@ -23,9 +23,7 @@ class IfStatementMissingBracketsReplacer implements ReplacerInterface
                 $content = file_get_contents($file->getRealPath());
 
                 $pattern = '/\bif\s*\(([^)]*)\)\s*([^;{][^;]*?)(?=\s*[\n;])/';
-                $updatedContent = preg_replace_callback($pattern, function ($matches) {
-                    return 'if (' . $matches[1] . ') {' . PHP_EOL . '    ' . $matches[2] . PHP_EOL . '}';
-                }, $content);
+                $updatedContent = preg_replace_callback($pattern, fn($matches): string => 'if (' . $matches[1] . ') {' . PHP_EOL . '    ' . $matches[2] . PHP_EOL . '}', $content);
 
                 if ($updatedContent !== $content) {
                     file_put_contents($file->getRealPath(), $updatedContent);

@@ -150,7 +150,7 @@ class Psr4AutoloaderConverterCommand extends Command
             ->depth('>= 1');
 
         $directories = iterator_to_array($directories);
-        usort($directories, fn($a, $b) => substr_count($b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count($a->getPath(), DIRECTORY_SEPARATOR));
+        usort($directories, fn($a, $b): int => substr_count((string) $b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count((string) $a->getPath(), DIRECTORY_SEPARATOR));
 
         // Iterate over each directory
         foreach ($directories as $directory) {
@@ -193,7 +193,7 @@ class Psr4AutoloaderConverterCommand extends Command
 
         // Sort directories by depth (deepest first) so we rename subdirectories first
         $directories = iterator_to_array($directories); // Convert Finder result to array for sorting
-        usort($directories, fn($a, $b) => substr_count($b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count($a->getPath(), DIRECTORY_SEPARATOR));
+        usort($directories, fn($a, $b): int => substr_count((string) $b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count((string) $a->getPath(), DIRECTORY_SEPARATOR));
 
         $renamedDirs = [];
 

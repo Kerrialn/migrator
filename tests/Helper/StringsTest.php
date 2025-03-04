@@ -7,7 +7,7 @@ use PHPUnit\Framework\TestCase;
 
 class StringsTest extends TestCase
 {
-    public function testToCamelCase()
+    public function testToCamelCase(): void
     {
         $this->assertEquals('helloWorld', Strings::toCamelCase('hello_world'));
         $this->assertEquals('helloWorld', Strings::toCamelCase('hello-world'));
