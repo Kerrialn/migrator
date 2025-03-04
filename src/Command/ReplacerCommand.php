@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace KerrialNewham\Migrator\Command;
 
 use KerrialNewham\Migrator\Config\Config;
-use KerrialNewham\Migrator\DataTransferObject\Project;
 use KerrialNewham\Migrator\Service\Replacer\IfStatementMissingBracketsReplacer;
 use KerrialNewham\Migrator\Service\Replacer\ShortTagReplacer;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -33,20 +32,16 @@ class ReplacerCommand extends Command
     {
         $io = new SymfonyStyle(input: $input, output: $output);
         $action = $input->getArgument('action');
-        $projectPath = getcwd();  // Assuming project path is current working directory; modify as needed
-
-        var_dump($action);
-        exit();
 
         switch ($action) {
             case 'php-short-tags':
                 $io->note("Replacing PHP short tags...");
-                (new ShortTagReplacer())->replace($projectPath);
+                (new ShortTagReplacer())->replace(dir: $this->config->getPath());
                 break;
 
             case 'old-if-syntax':
                 $io->note("Fixing old if statements...");
-                (new IfStatementMissingBracketsReplacer())->replace($projectPath);
+                (new IfStatementMissingBracketsReplacer())->replace(dir: $this->config->getPath());
                 break;
 
             default:

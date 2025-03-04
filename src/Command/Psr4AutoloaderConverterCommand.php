@@ -2,11 +2,11 @@
 
 namespace KerrialNewham\Migrator\Command;
 
-use Doctrine\Common\Collections\ArrayCollection;
 use KerrialNewham\ComposerJsonParser\Exception\ComposerJsonNotFoundException;
 use KerrialNewham\ComposerJsonParser\Parser;
 use KerrialNewham\Migrator\Config\Config;
 use KerrialNewham\Migrator\DataTransferObject\Project;
+use KerrialNewham\Migrator\Helper\Strings;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -20,8 +20,8 @@ use Symfony\Component\Finder\SplFileInfo;
 class Psr4AutoloaderConverterCommand extends Command
 {
     public function __construct(
-        private readonly Project $project,
-        private readonly Config  $config,
+        private readonly Project  $project,
+        private readonly Config   $config,
         private null|SymfonyStyle $io = null,
     )
     {
@@ -32,7 +32,7 @@ class Psr4AutoloaderConverterCommand extends Command
     {
         $this->io = new SymfonyStyle($input, $output);
         $this->project->setPath(path: $this->config->getPath());
-        $this->extractProjectFiles(path: $this->config->getPath());
+        $this->extractProjectFiles(path: $this->config->getPath(), exclude: $this->config->getExclude());
 
         try {
             $composer = (new Parser())
@@ -61,6 +61,7 @@ class Psr4AutoloaderConverterCommand extends Command
         // 3. Ensure directory names are capitalized
         $this->io->section('Step 3: Capitalizing directory names');
         $this->fixDirectoryStructure();
+        $this->capitaliseDirectories();
 
         // 4. Load all files as a PSR4 autoload entry in composer.json (no matter how many)
         $this->io->section('Step 4: Add PHP files to PSR4 autoload in composer.json');
@@ -73,6 +74,7 @@ class Psr4AutoloaderConverterCommand extends Command
         $this->io->success('PSR-4 conversion completed successfully!');
         return Command::SUCCESS;
     }
+
 
     private function splitMultipleClasses(): void
     {
@@ -134,49 +136,106 @@ class Psr4AutoloaderConverterCommand extends Command
             }
         }
     }
-    private function fixDirectoryStructure(): void
+
+
+    private function capitaliseDirectories(): void
     {
-        $files = new ArrayCollection($this->project->getFiles()->toArray());
-        $dirs = array_unique($files->map(fn(SplFileInfo $splFileInfo) => $splFileInfo->getPath())->toArray());
         $fileSystem = new Filesystem();
+        $finder = new Finder();
 
-        usort($dirs, fn($a, $b) => substr_count($b, DIRECTORY_SEPARATOR) <=> substr_count($a, DIRECTORY_SEPARATOR));
+        // Find all directories in the scanned project
+        $directories = $finder->in($this->project->getPath())
+            ->exclude($this->config->getExclude())
+            ->directories()
+            ->depth('>= 1');
 
-        $renamedDirs = [];
+        $directories = iterator_to_array($directories);
+        usort($directories, fn($a, $b) => substr_count($b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count($a->getPath(), DIRECTORY_SEPARATOR));
 
-        foreach ($dirs as $dirPath) {
-            $originalDirPath = $dirPath;
+        // Iterate over each directory
+        foreach ($directories as $directory) {
+            $currentPath = $directory->getRealPath();
+            $parentDir = dirname($currentPath);
+            $directoryName = basename($currentPath);
+            $capitalisedDirectoryName = ucfirst($directoryName);
 
-            foreach ($renamedDirs as $old => $new) {
-                if (str_starts_with($originalDirPath, $old)) {
-                    $dirPath = str_replace($old, $new, $originalDirPath);
-                    break;
-                }
-            }
+            // Check if the directory name is already capitalised
+            if ($directoryName !== $capitalisedDirectoryName) {
+                $newPath = $parentDir . DIRECTORY_SEPARATOR . $capitalisedDirectoryName;
 
-            $dirName = basename($dirPath);
-            $properCasedName = ucfirst($this->toCamelCase($dirName));
+                // Check if the target directory already exists
+                if ($fileSystem->exists($newPath)) {
+                    $this->io->warning("Skipping: Target directory '{$newPath}' already exists.");
+                } else {
+                    $this->io->info("Capitalising: {$directoryName}");
 
-            if ($dirName !== $properCasedName) {
-                $newDirPath = dirname($dirPath) . DIRECTORY_SEPARATOR . $properCasedName;
-
-                if (!file_exists($newDirPath)) {
-                    $fileSystem->rename($dirPath, $newDirPath, true);
-                    $renamedDirs[$originalDirPath] = $newDirPath;
+                    // Rename the directory
+                    try {
+                        $fileSystem->rename($currentPath, $newPath);
+                    } catch (\Exception $e) {
+                        $this->io->error("Failed to rename '{$currentPath}' to '{$newPath}': " . $e->getMessage());
+                    }
                 }
             }
         }
     }
 
-    private function toCamelCase(string $string): string
+    private function fixDirectoryStructure(): void
     {
-        $i = array("-", "_");
-        $string = preg_replace('/([a-z])([A-Z])/', "\\1 \\2", $string);
-        $string = preg_replace('@[^a-zA-Z0-9\-_ ]+@', '', $string);
-        $string = str_replace($i, ' ', $string);
-        $string = str_replace(' ', '', ucwords(strtolower($string)));
-        $string = strtolower(substr($string, 0, 1)) . substr($string, 1);
-        return $string;
+        $fileSystem = new Filesystem();
+        $finder = new Finder();
+
+        // Find all directories in the scanned project
+        $directories = $finder->in($this->project->getPath())
+            ->exclude($this->config->getExclude())
+            ->directories()
+            ->depth('>= 1'); // Ensure it scans subdirectories as well
+
+        // Sort directories by depth (deepest first) so we rename subdirectories first
+        $directories = iterator_to_array($directories); // Convert Finder result to array for sorting
+        usort($directories, fn($a, $b) => substr_count($b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count($a->getPath(), DIRECTORY_SEPARATOR));
+
+        $renamedDirs = [];
+
+        foreach ($directories as $dir) {
+            $originalDirPath = $dir->getRealPath();
+
+            if (!$originalDirPath) {
+                $this->io->warning("Skipping invalid directory: {$dir->getPathname()}");
+                continue;
+            }
+
+            // Handle already renamed directories
+            foreach ($renamedDirs as $old => $new) {
+                $this->io->info("Renaming directory: {$old} to {$new}");
+                if (str_starts_with($originalDirPath, $old)) {
+                    $originalDirPath = str_replace($old, $new, $originalDirPath);
+                    break;
+                }
+            }
+
+            $dirName = basename($originalDirPath);
+            $properCasedName = ucfirst(Strings::toCamelCase($dirName));
+
+            // Check if the directory name isn't already properly capitalized
+            if ($dirName !== $properCasedName) {
+                $newDirPath = dirname($originalDirPath) . DIRECTORY_SEPARATOR . $properCasedName;
+
+                $this->io->info("Checking directory renaming: {$originalDirPath} to {$newDirPath}");
+
+                // Check if the new directory path exists
+                if (!is_dir($newDirPath)) {
+                    $this->io->info("Renaming directory: {$originalDirPath} to {$newDirPath}");
+                    try {
+                        // Rename the directory
+                        $fileSystem->rename($originalDirPath, $newDirPath, true);
+                        $renamedDirs[$originalDirPath] = $newDirPath;
+                    } catch (\Exception $e) {
+                        $this->io->error("Failed to rename {$originalDirPath}: " . $e->getMessage());
+                    }
+                }
+            }
+        }
     }
 
     private function updateComposerJson(): void
@@ -187,16 +246,29 @@ class Psr4AutoloaderConverterCommand extends Command
         // Initialize the class map
         $classMap = [];
 
+        // Initialize the IO table
+        $table = $this->io->createTable();
+        $table->setHeaders(['Namespace', 'Path']);
+
         foreach ($files as $file) {
             $filePath = $file->getPath();
             $namespace = $this->getNamespaceFromFilePath($file, $this->project->getPath());
+
             if ($namespace) {
-                $classMap[$namespace] = $this->getNamespacePath($filePath);
+                $relativePath = $this->getRelativePath($this->project->getPath(), $filePath);
+                $classMap[$namespace] = $relativePath;
+                $table->addRow([$namespace, $relativePath]);
             }
         }
 
-        var_dump($classMap);
-        exit();
+        $table->render();
+    }
+
+    private function getRelativePath(string $basePath, string $filePath): string
+    {
+        $basePath = realpath($basePath);
+        $filePath = realpath($filePath);
+        return str_replace($basePath . DIRECTORY_SEPARATOR, '', $filePath);
     }
 
     private function getNamespaceFromFilePath(SplFileInfo $file, string $basePath): ?string
@@ -229,9 +301,9 @@ class Psr4AutoloaderConverterCommand extends Command
     private function extractProjectFiles(string $path, array $exclude = []): void
     {
         $finder = new Finder();
-        $finder->in($path)->name('*.php')->exclude($exclude)->files();
+        $files = $finder->in($path)->exclude($exclude)->name('*.php')->files();
 
-        foreach ($finder as $file) {
+        foreach ($files as $file) {
             $this->project->addFile($file);
         }
     }
