@@ -1,6 +1,6 @@
 <?php
 
-namespace Service;
+namespace Test\Service;
 
 use KerrialNewham\Migrator\Service\Replacer\IfStatementMissingBracketsReplacer;
 use PHPUnit\Framework\TestCase;
