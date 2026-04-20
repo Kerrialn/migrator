@@ -116,11 +116,16 @@ class Psr4AutoloaderConverterCommand extends Command
         foreach ($this->project->getFiles() as $file) {
             $multiClassSplitter = new MultiClassSplitter(filesystem: $filesystem, parser: $parser, file: $file);
 
-            if ($isDryRun) {
-                $count + $multiClassSplitter->countMultiClassFiles();
-            }
+            try {
+                if ($isDryRun) {
+                    $count += $multiClassSplitter->countMultiClassFiles();
+                    continue;
+                }
 
-            $multiClassSplitter->split();
+                $multiClassSplitter->split();
+            } catch (\RuntimeException $e) {
+                $this->io->warning($e->getMessage());
+            }
         }
         $this->io->info("found {$count} multi class files");
     }
