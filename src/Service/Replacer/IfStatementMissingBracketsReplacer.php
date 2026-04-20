@@ -6,7 +6,6 @@ namespace KerrialNewham\Migrator\Service\Replacer;
 
 
 use KerrialNewham\Migrator\NodeVisitor\RemoveIfStatementsWithoutBracketsNodeVisitor;
-use KerrialNewham\Migrator\NodeVisitor\SplitClassNodeVisitor;
 use KerrialNewham\Migrator\Service\Replacer\Contract\ReplacerInterface;
 use PhpParser\Error;
 use PhpParser\NodeTraverser;

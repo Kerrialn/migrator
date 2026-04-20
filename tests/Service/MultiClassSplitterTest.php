@@ -3,11 +3,8 @@
 namespace Test\Service;
 
 use KerrialNewham\Migrator\Service\MultiClassSplitter\MultiClassSplitter;
-use PhpParser\Node as Node;
-use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use PhpParser\PhpVersion;
-use PhpParser\PrettyPrinter\Standard;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\SplFileInfo;
 use PHPUnit\Framework\TestCase;
@@ -37,7 +34,7 @@ class MultiClassSplitterTest extends TestCase
         }
     }
 
-    public function testSplitMultipleClassesIntoSeparateFiles()
+    public function testSplitMultipleClassesIntoSeparateFiles(): void
     {
         // Create a PHP file with multiple classes
         $filePath = $this->tempDir . '/MultipleClasses.php';

@@ -10,7 +10,6 @@ use KerrialNewham\Migrator\Helper\Strings as StringUtils;
 
 use KerrialNewham\Migrator\Service\MultiClassSplitter\MultiClassSplitter;
 use Nette\Utils\Strings;
-use PhpParser\Error;
 use PhpParser\PhpVersion;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;

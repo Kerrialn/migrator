@@ -261,7 +261,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
 
             $versions = array_map(fn($package): mixed => $package['version_normalized'], $data['packages'][$packageName]);
 
-            usort($versions, 'version_compare');
+            usort($versions, version_compare(...));
             return end($versions);
         } catch (\Exception) {
             return null;
