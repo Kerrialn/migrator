@@ -20,7 +20,9 @@ if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
 $file = getcwd() . '/migrator.php';
 
 if (!file_exists($file)) {
-    throw new Exception("Configuration file not found: $file");
+    $dist = __DIR__ . '/../migrator.php.dist';
+    copy($dist, $file);
+    echo "Generated migrator.php in " . getcwd() . PHP_EOL;
 }
 
 /** @var Config $config */
