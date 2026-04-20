@@ -5,6 +5,7 @@ namespace KerrialNewham\Migrator\Command;
 use Doctrine\DBAL\DriverManager;
 use Fhaculty\Graph\Graph;
 use Graphp\GraphViz\GraphViz;
+use KerrialNewham\Migrator\Config\Config;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -14,19 +15,23 @@ use Symfony\Component\Console\Style\SymfonyStyle;
 #[AsCommand(name: 'map-scheme', aliases: ['ms'])]
 class SchemeMapCommand extends Command
 {
+    public function __construct(private readonly Config $config)
+    {
+        parent::__construct();
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $io->title('Starting mapping');
 
-        $conn = DriverManager::getConnection([
-            'host' => '127.0.0.1',
-            'port' => 3306,
-            'dbname' => 'pelican',
-            'user' => 'root',
-            'password' => 'root',
-            'driver' => 'mysqli',
-        ]);
+        $database = $this->config->getDatabase();
+        if ($database === null) {
+            $io->error('No database configuration found in migrator.php. Add a DatabaseConfig to use map-scheme.');
+            return Command::FAILURE;
+        }
+
+        $conn = DriverManager::getConnection($database->toConnectionParams());
 
         $schemaManager = $conn->createSchemaManager();
         $tables = $schemaManager->listTables();

@@ -6,6 +6,7 @@ final class Config
     public function __construct(
         private string $path,
         private array $exclude = [],
+        private ?DatabaseConfig $database = null,
     )
     {
     }
@@ -28,6 +29,16 @@ final class Config
     public function setExclude(array $exclude): void
     {
         $this->exclude = $exclude;
+    }
+
+    public function getDatabase(): ?DatabaseConfig
+    {
+        return $this->database;
+    }
+
+    public function setDatabase(?DatabaseConfig $database): void
+    {
+        $this->database = $database;
     }
 
 }

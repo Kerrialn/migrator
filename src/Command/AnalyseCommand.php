@@ -23,7 +23,6 @@ use KerrialNewham\Migrator\Service\Calculator\MigrationCalculator;
 use KerrialNewham\Migrator\Service\Calculator\UpgradeCalculator;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
-use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
@@ -43,13 +42,12 @@ class AnalyseCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument('path', InputArgument::REQUIRED, 'path of the project you want to analyse.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle(input: $input, output: $output);
-        $projectPath = $input->getArgument('path');
+        $projectPath = $this->config->getPath();
         $this->project->setPath($projectPath);
 
         // 1. ask if migration or upgrade
@@ -74,7 +72,7 @@ class AnalyseCommand extends Command
         $io->progressStart(max: 100);
 
         // 3. extract project files
-        $this->extractProjectFiles(path: $projectPath);
+        $this->extractProjectFiles(path: $projectPath, exclude: $this->config->getExclude());
 
         try {
             $composer = (new ComposerJson())
@@ -212,10 +210,10 @@ class AnalyseCommand extends Command
         return $targetPhpVersionEnum;
     }
 
-    private function extractProjectFiles(string $path): void
+    private function extractProjectFiles(string $path, array $exclude = []): void
     {
         $finder = new Finder();
-        $finder->in($path)->exclude(['vendor'])->files()->name('*.php');
+        $finder->in($path)->exclude($exclude)->files()->name('*.php');
 
         foreach ($finder as $file) {
             $this->project->addFile($file);

@@ -33,7 +33,7 @@ $application->add(new AnalyseCommand(project: new Project(), config: $config));
 $application->add(new ReplacerCommand(config: $config));
 $application->add(new Psr4AutoloaderConverterCommand(project: new Project(), config: $config));
 $application->add(new RoutesExtractorCommand(project: new Project(), config: $config, routes: new ArrayCollection()));
-$application->add(new SchemeMapCommand());
+$application->add(new SchemeMapCommand(config: $config));
 
 try {
     $application->run();

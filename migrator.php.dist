@@ -3,11 +3,19 @@
 declare(strict_types=1);
 
 use KerrialNewham\Migrator\Config\Config;
+use KerrialNewham\Migrator\Config\DatabaseConfig;
 
 return new Config(
     path: getcwd(),
     exclude: [
         'vendor',
         'tests',
-    ]
+    ],
+    // database: new DatabaseConfig(
+    //     host: '127.0.0.1',
+    //     port: 3306,
+    //     dbname: 'your_database',
+    //     user: 'root',
+    //     password: '',
+    // ),
 );
