@@ -14,7 +14,7 @@ use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
-#[AsCommand(name: 'replace', aliases: ['fix'])]
+#[AsCommand(name: 'replace')]
 class ReplacerCommand extends Command
 {
     public function __construct(
@@ -41,7 +41,7 @@ class ReplacerCommand extends Command
 
             case 'old-if-syntax':
                 $io->note("Fixing old if statements...");
-                (new IfStatementMissingBracketsReplacer())->replace(dir: $this->config->getPath());
+                (new IfStatementMissingBracketsReplacer())->replace($this->config->getPath());
                 break;
 
             default:

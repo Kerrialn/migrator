@@ -1,9 +1,9 @@
 <?php
 
-namespace KerrialNewham\Migrator\Service\MultiClassSplitter\NodeVisitor;
+namespace KerrialNewham\Migrator\NodeVisitor;
 
-use PhpParser\NodeVisitorAbstract;
 use PhpParser\Node as Node;
+use PhpParser\NodeVisitorAbstract;
 
 final class SplitClassNodeVisitor extends NodeVisitorAbstract
 {

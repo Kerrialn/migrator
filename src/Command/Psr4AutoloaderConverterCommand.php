@@ -6,17 +6,24 @@ use KerrialNewham\ComposerJsonParser\Exception\ComposerJsonNotFoundException;
 use KerrialNewham\ComposerJsonParser\Parser;
 use KerrialNewham\Migrator\Config\Config;
 use KerrialNewham\Migrator\DataTransferObject\Project;
-use KerrialNewham\Migrator\Helper\Strings;
+use KerrialNewham\Migrator\Helper\Strings as StringUtils;
+
+use KerrialNewham\Migrator\Service\MultiClassSplitter\MultiClassSplitter;
+use Nette\Utils\Strings;
+use PhpParser\Error;
+use PhpParser\PhpVersion;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\Finder\Finder;
 use Symfony\Component\Finder\SplFileInfo;
+use PhpParser\ParserFactory;
 
-#[AsCommand(name: 'convert-to-psr4', aliases: ['psr4'])]
+#[AsCommand(name: 'psr4')]
 class Psr4AutoloaderConverterCommand extends Command
 {
     public function __construct(
@@ -28,10 +35,19 @@ class Psr4AutoloaderConverterCommand extends Command
         parent::__construct();
     }
 
+    protected function configure(): void
+    {
+        $this->addArgument(name: 'action');
+        $this->addOption(name: 'dry', mode: InputOption::VALUE_NONE);
+    }
+
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->io = new SymfonyStyle($input, $output);
         $this->project->setPath(path: $this->config->getPath());
+        $action = $input->getArgument('action');
+        $isDryRun = $input->getOption('dry');
+
         $this->extractProjectFiles(path: $this->config->getPath(), exclude: $this->config->getExclude());
 
         try {
@@ -51,68 +67,42 @@ class Psr4AutoloaderConverterCommand extends Command
         $this->io->title('Starting PSR-4 Conversion');
 
         // 1. Extract multiple classes into separate files
-        $this->io->section('Step 1: Splitting multiple classes into individual files');
-        $this->splitMultipleClasses();
-
-        // 2. Fix class short names or file name / class name mismatch
-        $this->io->section('Step 2: Fixing class names and file names');
-        $this->fixClassNames();
-
-        // 3. Ensure directory names are capitalized
-        $this->io->section('Step 3: Capitalizing directory names');
-        $this->fixDirectoryStructure();
-        $this->capitaliseDirectories();
-
-        // 4. Load all files as a PSR4 autoload entry in composer.json (no matter how many)
-        $this->io->section('Step 4: Add PHP files to PSR4 autoload in composer.json');
-        $this->updateComposerJson();
-
-        // 5. Optimize namespace roots in composer.json
-        $this->io->section('Step 5: Optimizing namespace root structure');
-        $this->optimizeNamespaceRoot(project: $this->project);
+        match ($action) {
+            'split-multi-class-files' => $this->splitMultipleClasses($isDryRun),
+            'fix-directory-naming' => $this->fixDirectoryNaming(),
+            'capitalise-directory-names' => $this->capitaliseDirectories(),
+            'sync-file-and-class-names' => $this->syncFileAndClassNames(),
+            'dump-autoload-classmap' => $this->updateComposerJson(),
+            'optimizing-autoload' => $this->optimizeNamespaceRoot(),
+        };
 
         $this->io->success('PSR-4 conversion completed successfully!');
         return Command::SUCCESS;
     }
 
 
-    private function splitMultipleClasses(): void
+    private function splitMultipleClasses(bool $isDryRun = false): void
     {
+        $this->io->section('Splitting multiple classes into individual files');
         $filesystem = new Filesystem();
+        $parser = (new ParserFactory())->createForVersion(PhpVersion::fromString("7.0"));
 
+        $count = 0;
         foreach ($this->project->getFiles() as $file) {
-            $filePath = $file->getPathname();
-            $content = $file->getContents();
+            $multiClassSplitter = new MultiClassSplitter(filesystem: $filesystem, parser: $parser, file: $file);
 
-            preg_match_all('/\bclass\s+(\w+)/', $content, $matches);
-            $classes = $matches[1] ?? [];
-
-            if (count($classes) <= 1) {
-                continue;
+            if ($isDryRun) {
+                $count + $multiClassSplitter->countMultiClassFiles();
             }
 
-            foreach ($classes as $className) {
-                $pattern = '/(class\s+' . preg_quote($className, '/') . '\s+\{.*?\})/s';
-                preg_match($pattern, $content, $classMatch);
-
-                if (!isset($classMatch[1])) {
-                    continue;
-                }
-
-                $classContent = "<?php\n\n" . $classMatch[1] . "\n";
-                $newFilePath = dirname($filePath) . DIRECTORY_SEPARATOR . $className . '.php';
-
-                if (!$filesystem->exists($newFilePath)) {
-                    $filesystem->dumpFile($newFilePath, $classContent);
-                }
-            }
-
-            $filesystem->remove($filePath);
+            $multiClassSplitter->split();
         }
+        $this->io->info("found {$count} multi class files");
     }
 
-    private function fixClassNames(): void
+    private function syncFileAndClassNames(): void
     {
+        $this->io->section('Fixing class names and file names');
         $filesystem = new Filesystem();
 
         foreach ($this->project->getFiles() as $file) {
@@ -150,38 +140,39 @@ class Psr4AutoloaderConverterCommand extends Command
             ->depth('>= 1');
 
         $directories = iterator_to_array($directories);
-        usort($directories, fn($a, $b): int => substr_count((string) $b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count((string) $a->getPath(), DIRECTORY_SEPARATOR));
+        usort($directories, fn($a, $b): int => substr_count((string)$b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count((string)$a->getPath(), DIRECTORY_SEPARATOR));
 
         // Iterate over each directory
-        foreach ($directories as $directory) {
+        foreach ($directories as $index => $directory) {
             $currentPath = $directory->getRealPath();
             $parentDir = dirname($currentPath);
             $directoryName = basename($currentPath);
-            $capitalisedDirectoryName = ucfirst($directoryName);
 
-            // Check if the directory name is already capitalised
-            if ($directoryName !== $capitalisedDirectoryName) {
-                $newPath = $parentDir . DIRECTORY_SEPARATOR . $capitalisedDirectoryName;
+            $capitalisedDirectoryName = Strings::capitalize($directoryName);
+            $newPath = $parentDir . DIRECTORY_SEPARATOR . $capitalisedDirectoryName;
 
-                // Check if the target directory already exists
-                if ($fileSystem->exists($newPath)) {
-                    $this->io->warning("Skipping: Target directory '{$newPath}' already exists.");
-                } else {
-                    $this->io->info("Capitalising: {$directoryName}");
+            if (Strings::compare($directoryName, $capitalisedDirectoryName)) {
+                // Use a temporary name if the case-only rename fails
+                $tempPath = $parentDir . DIRECTORY_SEPARATOR . uniqid($directoryName . '_tmp_');
 
-                    // Rename the directory
-                    try {
-                        $fileSystem->rename($currentPath, $newPath);
-                    } catch (\Exception $e) {
-                        $this->io->error("Failed to rename '{$currentPath}' to '{$newPath}': " . $e->getMessage());
-                    }
+                try {
+                    $this->io->info("Renaming '{$currentPath}' → '{$tempPath}'");
+                    $fileSystem->rename($currentPath, $tempPath);
+
+                    $this->io->info("Renaming '{$tempPath}' → '{$newPath}'");
+                    $fileSystem->rename($tempPath, $newPath);
+                } catch (\Exception $e) {
+                    $this->io->error("Failed to rename '{$currentPath}' to '{$newPath}': " . $e->getMessage());
                 }
             }
         }
+
     }
 
-    private function fixDirectoryStructure(): void
+    private function fixDirectoryNaming(): void
     {
+        $this->io->section('Fixing directory names');
+
         $fileSystem = new Filesystem();
         $finder = new Finder();
 
@@ -189,11 +180,11 @@ class Psr4AutoloaderConverterCommand extends Command
         $directories = $finder->in($this->project->getPath())
             ->exclude($this->config->getExclude())
             ->directories()
-            ->depth('>= 1'); // Ensure it scans subdirectories as well
+            ->depth('-1');
 
         // Sort directories by depth (deepest first) so we rename subdirectories first
         $directories = iterator_to_array($directories); // Convert Finder result to array for sorting
-        usort($directories, fn($a, $b): int => substr_count((string) $b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count((string) $a->getPath(), DIRECTORY_SEPARATOR));
+        usort($directories, fn($a, $b): int => substr_count((string)$b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count((string)$a->getPath(), DIRECTORY_SEPARATOR));
 
         $renamedDirs = [];
 
@@ -215,7 +206,7 @@ class Psr4AutoloaderConverterCommand extends Command
             }
 
             $dirName = basename($originalDirPath);
-            $properCasedName = ucfirst(Strings::toCamelCase($dirName));
+            $properCasedName = ucfirst(StringUtils::toCamelCase($dirName));
 
             // Check if the directory name isn't already properly capitalized
             if ($dirName !== $properCasedName) {
@@ -240,6 +231,8 @@ class Psr4AutoloaderConverterCommand extends Command
 
     private function updateComposerJson(): void
     {
+        $this->io->section('Updating PSR4 autoload in composer.json');
+
         $composer = $this->project->getComposer();
         $files = $this->project->getFiles();
 
@@ -292,9 +285,10 @@ class Psr4AutoloaderConverterCommand extends Command
         return str_replace($baseDir, '', $filePath);
     }
 
-    private function optimizeNamespaceRoot(Project $project): void
+    private function optimizeNamespaceRoot(): void
     {
-        $composer = $project->getComposer();
+        $this->io->section('Optimizing namespace root structure in composer.json');
+        $composer = $this->project->getComposer();
         // TODO: Implement logic to optimize namespace root structure
     }
 

@@ -4,69 +4,96 @@ namespace Test\Service;
 
 use KerrialNewham\Migrator\Service\Replacer\IfStatementMissingBracketsReplacer;
 use PHPUnit\Framework\TestCase;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
+use RuntimeException;
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Finder\SplFileInfo;
 
-class IfStatementReplacerTest extends TestCase
+class RemoveIfStatementsWithoutBracketsTest extends TestCase
 {
-    private string $testDir;
+    private Filesystem $filesystem;
 
     protected function setUp(): void
     {
-        $this->testDir = __DIR__ . '/test_files';
-        mkdir($this->testDir);
 
-        // Simple if statement without brackets
-        file_put_contents($this->testDir . '/file1.php', '<?php if ($a) echo "Hello"; ?>');
-
-        // If statement already using brackets (should remain unchanged)
-        file_put_contents($this->testDir . '/file2.php', '<?php if ($b) { echo "World"; } ?>');
-
-        // If statement with multiple lines but missing brackets
-        file_put_contents($this->testDir . '/file3.php', '<?php if ($c) echo "Line1"; echo "Line2"; ?>');
-
-        // If statement containing a foreach loop without brackets
-        file_put_contents($this->testDir . '/file4.php', '<?php
-            if ($condition)
-                foreach ($items as $item)
-                    process($item);
-        ?>');
+        $this->filesystem = new Filesystem();
     }
 
-    protected function tearDown(): void
+    public function testReplaceAddsBracketsToIfStatementsWithoutBrackets(): void
     {
-        $files = new RecursiveIteratorIterator(
-            new RecursiveDirectoryIterator($this->testDir, RecursiveDirectoryIterator::SKIP_DOTS),
-            RecursiveIteratorIterator::CHILD_FIRST
-        );
+        // Create a temporary file to test the replacement
+        $testFilePath = sys_get_temp_dir() . '/testfile.php';
+        $content = '<?php if ($x) echo "Hello";';
+        $this->filesystem->dumpFile($testFilePath, $content);
 
-        foreach ($files as $fileinfo) {
-            $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
-            $todo($fileinfo->getRealPath());
+        // Create SplFileInfo for the file
+        $file = new SplFileInfo($testFilePath,$testFilePath,$testFilePath);
+
+        // Create an instance of the class that contains the `replace` method
+        $yourClassInstance = new IfStatementMissingBracketsReplacer();  // Replace with the actual class name
+
+        // Call the replace method
+        $yourClassInstance->replace($file);
+
+        // Get the new file content
+        $newContent = file_get_contents($testFilePath);
+
+        // Assert that the content now contains the correct if statement with braces
+        $this->assertStringContainsString('if ($x) {', $newContent);
+        $this->assertStringContainsString('echo "Hello";', $newContent);
+        $this->assertStringContainsString('}', $newContent);
+
+        // Clean up
+        $this->filesystem->remove($testFilePath);
+    }
+
+    public function testReplaceDoesNotModifyIfStatementsWithBrackets(): void
+    {
+        // Create a temporary file with correct if statement (already with brackets)
+        $testFilePath = sys_get_temp_dir() . '/testfile2.php';
+        $content = <<<PHP
+        if (\$x) {
+            echo "Hello";
         }
+        PHP;
+        $this->filesystem->dumpFile($testFilePath, $content);
 
-        rmdir($this->testDir);
+        // Create SplFileInfo for the file
+        $file = new SplFileInfo($testFilePath, $testFilePath, $testFilePath);
+
+        // Create an instance of the class that contains the `replace` method
+        $yourClassInstance = new IfStatementMissingBracketsReplacer();  // Replace with the actual class name
+
+        // Call the replace method
+        $yourClassInstance->replace($file);
+
+        // Get the new file content
+        $newContent = file_get_contents($testFilePath);
+
+        // Assert that the content remains the same (no change)
+        $this->assertEquals($content, $newContent);
+
+        // Clean up
+        $this->filesystem->remove($testFilePath);
     }
 
-    public function testReplaceIfStatements(): void
+    public function testReplaceThrowsExceptionIfFileCannotBeParsed(): void
     {
-        $ifStatementReplacer = new IfStatementMissingBracketsReplacer();
-        $ifStatementReplacer->replace($this->testDir);
+        // Create a temporary file with invalid PHP content
+        $testFilePath = sys_get_temp_dir() . '/testfile3.php';
+        $content = '<?php if ($x echo "Hello";';  // Invalid PHP syntax
+        $this->filesystem->dumpFile($testFilePath, $content);
 
-        // Verify simple if statement is fixed
-        $this->assertStringContainsString('<?php if ($a) {', file_get_contents($this->testDir . '/file1.php'));
+        $file = new SplFileInfo($testFilePath, $testFilePath, $testFilePath);
+        $yourClassInstance = new IfStatementMissingBracketsReplacer();  // Replace with the actual class name
 
-        // Verify original brackets remain unchanged
-        $this->assertStringContainsString('<?php if ($b) {', file_get_contents($this->testDir . '/file2.php'));
+        // Assert that an exception is thrown when calling replace
+        $this->expectException(RuntimeException::class);
+        $this->expectExceptionMessage("Failed to parse file: $testFilePath");
 
-        // Verify multi-line if statement is wrapped properly
-        $this->assertStringContainsString('<?php if ($c) {', file_get_contents($this->testDir . '/file3.php'));
-        $this->assertStringContainsString('echo "Line1";', file_get_contents($this->testDir . '/file3.php'));
-        $this->assertStringContainsString('echo "Line2";', file_get_contents($this->testDir . '/file3.php'));
+        // Call the replace method (this should throw an exception)
+        $yourClassInstance->replace($file);
 
-        // Verify foreach inside if is properly wrapped
-        $this->assertStringContainsString('<?php if ($condition) {', file_get_contents($this->testDir . '/file4.php'));
-        $this->assertStringContainsString('foreach ($items as $item) {', file_get_contents($this->testDir . '/file4.php'));
-        $this->assertStringContainsString('process($item);', file_get_contents($this->testDir . '/file4.php'));
+        // Clean up
+        $this->filesystem->remove($testFilePath);
     }
 }

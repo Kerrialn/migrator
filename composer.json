@@ -5,10 +5,13 @@
         "symfony/console": "^7.1",
         "symfony/process": "^7.1",
         "phpstan/phpstan": "^2.1",
-        "kerrialn/composer-json-parser": "dev-main",
+        "kerrialn/composer-json-parser": "v2.0",
         "symfony/finder": "^7.1",
         "nesbot/carbon": "^3.8",
-        "symfony/filesystem": "^7.2"
+        "symfony/filesystem": "^7.2",
+        "nette/utils": "^4.0",
+        "doctrine/dbal": "^4.2",
+        "graphp/graphviz": "^0.2.2"
     },
     "bin": [
         "bin/migrator"

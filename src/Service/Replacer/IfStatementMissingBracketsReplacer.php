@@ -4,31 +4,57 @@ declare(strict_types=1);
 
 namespace KerrialNewham\Migrator\Service\Replacer;
 
+
+use KerrialNewham\Migrator\NodeVisitor\RemoveIfStatementsWithoutBracketsNodeVisitor;
+use KerrialNewham\Migrator\NodeVisitor\SplitClassNodeVisitor;
 use KerrialNewham\Migrator\Service\Replacer\Contract\ReplacerInterface;
-use RecursiveDirectoryIterator;
-use RecursiveIteratorIterator;
-use SplFileInfo;
+use PhpParser\Error;
+use PhpParser\NodeTraverser;
+use PhpParser\ParserFactory;
+use PhpParser\PhpVersion;
+use PhpParser\Node as Node;
+use PhpParser\PrettyPrinter\Standard;
+use RuntimeException;
+use Symfony\Component\Finder\SplFileInfo;
 
 class IfStatementMissingBracketsReplacer implements ReplacerInterface
 {
-    public function replace(string $dir)
+    public function replace(SplFileInfo $file) : void
     {
-        $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir));
+        $parser = (new ParserFactory())->createForVersion(PhpVersion::fromString("7.0"));
+        $filePath = $file->getPathname();
+        $content = $file->getContents();
 
-        /**
-         * @var SplFileInfo $file
-         */
-        foreach ($files as $file) {
-            if ($file->isFile() && pathinfo($file->getRealPath(), PATHINFO_EXTENSION) === 'php') {
-                $content = file_get_contents($file->getRealPath());
+        try {
+            $stmts = $parser->parse($content);
+        } catch (Error $e) {
+            throw new RuntimeException("Failed to parse file: $filePath - " . $e->getMessage());
+        }
 
-                $pattern = '/\bif\s*\(([^)]*)\)\s*([^;{][^;]*?)(?=\s*[\n;])/';
-                $updatedContent = preg_replace_callback($pattern, fn($matches): string => 'if (' . $matches[1] . ') {' . PHP_EOL . '    ' . $matches[2] . PHP_EOL . '}', $content);
+        // Step 1: Traverse the AST to find all if statements without brackets
+        $traverser = new NodeTraverser();
+        $removeIfStatementsWithoutBracketsNodeVisitor = new RemoveIfStatementsWithoutBracketsNodeVisitor();
+        $traverser->addVisitor($removeIfStatementsWithoutBracketsNodeVisitor);
+        $traverser->traverse($stmts);
 
-                if ($updatedContent !== $content) {
-                    file_put_contents($file->getRealPath(), $updatedContent);
-                }
+        // Step 2: Get the list of if statements without brackets
+        $ifsWithoutBrackets = $removeIfStatementsWithoutBracketsNodeVisitor->getStatements();
+
+        // Step 3: Modify the statements by adding curly braces
+        foreach ($ifsWithoutBrackets as $ifStmt) {
+            if (count($ifStmt->stmts) === 1 && !$ifStmt->hasAttribute('brackets')) {
+                // Wrap the single statement in a block (adding curly braces)
+                $ifStmt->stmts = [new Node\Stmt\Expression($ifStmt->stmts)];
+                $ifStmt->setAttribute('brackets', true);
             }
         }
+
+        // Step 4: Use the pretty printer with minimal formatting (no extra newlines or indentation)
+        $prettyPrinter = new Standard();
+        $modifiedContent = "<?php" . $prettyPrinter->prettyPrintFile($stmts);
+
+        // Step 5: Write the modified content back to the file
+        file_put_contents($filePath, $modifiedContent);
     }
+
 }
