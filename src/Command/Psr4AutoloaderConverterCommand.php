@@ -209,8 +209,7 @@ class Psr4AutoloaderConverterCommand extends Command
         // Find all directories in the scanned project
         $directories = $finder->in($this->project->getPath())
             ->exclude($this->config->getExclude())
-            ->directories()
-            ->depth('-1');
+            ->directories();
 
         // Sort directories by depth (deepest first) so we rename subdirectories first
         $directories = iterator_to_array($directories); // Convert Finder result to array for sorting
