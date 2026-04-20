@@ -204,15 +204,24 @@ class Psr4AutoloaderConverterCommand extends Command
         $this->io->section('Fixing directory names');
 
         $fileSystem = new Filesystem();
-        $finder = new Finder();
 
-        // Find all directories in the scanned project
+        // Build the set of directories that are part of the PHP file hierarchy
+        $basePath = rtrim((string) realpath($this->project->getPath()), DIRECTORY_SEPARATOR);
+        $phpFileDirs = [];
+        foreach ($this->project->getFiles() as $file) {
+            $dir = dirname((string) ($file->getRealPath() ?: $file->getPathname()));
+            while (strlen($dir) > strlen($basePath) && str_starts_with($dir, $basePath)) {
+                $phpFileDirs[$dir] = true;
+                $dir = dirname($dir);
+            }
+        }
+
+        $finder = new Finder();
         $directories = $finder->in($this->project->getPath())
             ->exclude($this->config->getExclude())
             ->directories();
 
-        // Sort directories by depth (deepest first) so we rename subdirectories first
-        $directories = iterator_to_array($directories); // Convert Finder result to array for sorting
+        $directories = iterator_to_array($directories);
         usort($directories, fn($a, $b): int => substr_count((string)$b->getPath(), DIRECTORY_SEPARATOR) <=> substr_count((string)$a->getPath(), DIRECTORY_SEPARATOR));
 
         $renamedDirs = [];
@@ -225,35 +234,55 @@ class Psr4AutoloaderConverterCommand extends Command
                 continue;
             }
 
-            // Handle already renamed directories
+            // Adjust path if a parent directory was already renamed
             foreach ($renamedDirs as $old => $new) {
-                $this->io->info("Renaming directory: {$old} to {$new}");
-                if (str_starts_with($originalDirPath, $old)) {
-                    $originalDirPath = str_replace($old, $new, $originalDirPath);
+                if (str_starts_with($originalDirPath, $old . DIRECTORY_SEPARATOR)) {
+                    $originalDirPath = $new . substr($originalDirPath, strlen($old));
                     break;
                 }
+            }
+
+            if (!isset($phpFileDirs[$originalDirPath])) {
+                continue;
             }
 
             $dirName = basename($originalDirPath);
             $properCasedName = ucfirst(StringUtils::toCamelCase($dirName));
 
-            // Check if the directory name isn't already properly capitalized
-            if ($dirName !== $properCasedName) {
-                $newDirPath = dirname($originalDirPath) . DIRECTORY_SEPARATOR . $properCasedName;
+            if ($dirName === $properCasedName) {
+                continue;
+            }
 
-                $this->io->info("Checking directory renaming: {$originalDirPath} to {$newDirPath}");
+            $newDirPath = dirname($originalDirPath) . DIRECTORY_SEPARATOR . $properCasedName;
 
-                // Check if the new directory path exists
-                if (!is_dir($newDirPath)) {
-                    $this->io->info("Renaming directory: {$originalDirPath} to {$newDirPath}");
-                    try {
-                        // Rename the directory
-                        $fileSystem->rename($originalDirPath, $newDirPath, true);
-                        $renamedDirs[$originalDirPath] = $newDirPath;
-                    } catch (\Exception $e) {
-                        $this->io->error("Failed to rename {$originalDirPath}: " . $e->getMessage());
+            try {
+                if (strcasecmp($dirName, $properCasedName) === 0) {
+                    // Case-only rename: use a temp path to work around case-insensitive filesystems
+                    $tempPath = dirname($originalDirPath) . DIRECTORY_SEPARATOR . uniqid($dirName . '_tmp_');
+                    $fileSystem->rename($originalDirPath, $tempPath);
+                    $fileSystem->rename($tempPath, $newDirPath);
+                } elseif (!is_dir($newDirPath)) {
+                    $fileSystem->rename($originalDirPath, $newDirPath, true);
+                } else {
+                    $this->io->warning("Cannot rename '{$originalDirPath}': target '{$newDirPath}' already exists");
+                    continue;
+                }
+
+                $this->io->info("Renamed '{$originalDirPath}' → '{$newDirPath}'");
+                $renamedDirs[$originalDirPath] = $newDirPath;
+
+                // Update phpFileDirs to reflect the rename so descendant dirs still match
+                $updated = [];
+                foreach ($phpFileDirs as $phpDir => $_) {
+                    if (str_starts_with($phpDir, $originalDirPath)) {
+                        $updated[$newDirPath . substr($phpDir, strlen($originalDirPath))] = true;
+                    } else {
+                        $updated[$phpDir] = true;
                     }
                 }
+                $phpFileDirs = $updated;
+            } catch (\Exception $e) {
+                $this->io->error("Failed to rename '{$originalDirPath}': " . $e->getMessage());
             }
         }
     }
