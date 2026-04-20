@@ -4,15 +4,15 @@ declare(strict_types=1);
 
 namespace KerrialNewham\Migrator\Config;
 
-final class DatabaseConfig
+final readonly class DatabaseConfig
 {
     public function __construct(
-        private readonly string $host,
-        private readonly int $port,
-        private readonly string $dbname,
-        private readonly string $user,
-        private readonly string $password,
-        private readonly string $driver = 'mysqli',
+        private string $host,
+        private int $port,
+        private string $dbname,
+        private string $user,
+        private string $password,
+        private string $driver = 'mysqli',
     ) {
     }
 
