@@ -36,16 +36,28 @@ class Psr4AutoloaderConverterCommand extends Command
 
     protected function configure(): void
     {
-        $this->addArgument(name: 'action');
-        $this->addOption(name: 'dry', mode: InputOption::VALUE_NONE);
+        $this->addOption(name: 'split-multi-class-files', mode: InputOption::VALUE_NONE, description: 'Extract multiple classes into separate files');
+        $this->addOption(name: 'fix-directory-naming', mode: InputOption::VALUE_NONE, description: 'Rename directories to PascalCase');
+        $this->addOption(name: 'capitalise-directory-names', mode: InputOption::VALUE_NONE, description: 'Capitalise directory names');
+        $this->addOption(name: 'sync-file-and-class-names', mode: InputOption::VALUE_NONE, description: 'Rename class names to match their file names');
+        $this->addOption(name: 'dump-autoload-classmap', mode: InputOption::VALUE_NONE, description: 'Dump PSR-4 autoload classmap into composer.json');
+        $this->addOption(name: 'optimizing-autoload', mode: InputOption::VALUE_NONE, description: 'Optimize namespace root structure in composer.json');
+        $this->addOption(name: 'dry', mode: InputOption::VALUE_NONE, description: 'Dry run — preview changes without applying them');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $this->io = new SymfonyStyle($input, $output);
         $this->project->setPath(path: $this->config->getPath());
-        $action = $input->getArgument('action');
-        $isDryRun = $input->getOption('dry');
+        $isDryRun = (bool) $input->getOption('dry');
+
+        $flags = ['split-multi-class-files', 'fix-directory-naming', 'capitalise-directory-names', 'sync-file-and-class-names', 'dump-autoload-classmap', 'optimizing-autoload'];
+        $active = array_filter($flags, fn(string $flag) => (bool) $input->getOption($flag));
+
+        if (empty($active)) {
+            $this->io->error('No action specified. Use one or more flags: --' . implode(', --', $flags));
+            return Command::INVALID;
+        }
 
         $this->extractProjectFiles(path: $this->config->getPath(), exclude: $this->config->getExclude());
 
@@ -65,22 +77,29 @@ class Psr4AutoloaderConverterCommand extends Command
 
         $this->io->title('Starting PSR-4 Conversion');
 
-        // 1. Extract multiple classes into separate files
-        $validActions = ['split-multi-class-files', 'fix-directory-naming', 'capitalise-directory-names', 'sync-file-and-class-names', 'dump-autoload-classmap', 'optimizing-autoload'];
-
-        if (!in_array($action, $validActions, true)) {
-            $this->io->error(sprintf('Unknown action "%s". Available actions: %s.', $action ?? '(none)', implode(', ', $validActions)));
-            return Command::INVALID;
+        if ($input->getOption('split-multi-class-files')) {
+            $this->splitMultipleClasses($isDryRun);
         }
 
-        match ($action) {
-            'split-multi-class-files' => $this->splitMultipleClasses($isDryRun),
-            'fix-directory-naming' => $this->fixDirectoryNaming(),
-            'capitalise-directory-names' => $this->capitaliseDirectories(),
-            'sync-file-and-class-names' => $this->syncFileAndClassNames(),
-            'dump-autoload-classmap' => $this->updateComposerJson(),
-            'optimizing-autoload' => $this->optimizeNamespaceRoot(),
-        };
+        if ($input->getOption('fix-directory-naming')) {
+            $this->fixDirectoryNaming();
+        }
+
+        if ($input->getOption('capitalise-directory-names')) {
+            $this->capitaliseDirectories();
+        }
+
+        if ($input->getOption('sync-file-and-class-names')) {
+            $this->syncFileAndClassNames();
+        }
+
+        if ($input->getOption('dump-autoload-classmap')) {
+            $this->updateComposerJson();
+        }
+
+        if ($input->getOption('optimizing-autoload')) {
+            $this->optimizeNamespaceRoot();
+        }
 
         $this->io->success('PSR-4 conversion completed successfully!');
         return Command::SUCCESS;
