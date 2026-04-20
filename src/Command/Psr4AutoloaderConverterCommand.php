@@ -3,7 +3,7 @@
 namespace KerrialNewham\Migrator\Command;
 
 use KerrialNewham\ComposerJsonParser\Exception\ComposerJsonNotFoundException;
-use KerrialNewham\ComposerJsonParser\Parser;
+use KerrialNewham\ComposerJsonParser\ComposerJson;
 use KerrialNewham\Migrator\Config\Config;
 use KerrialNewham\Migrator\DataTransferObject\Project;
 use KerrialNewham\Migrator\Helper\Strings as StringUtils;
@@ -50,7 +50,7 @@ class Psr4AutoloaderConverterCommand extends Command
         $this->extractProjectFiles(path: $this->config->getPath(), exclude: $this->config->getExclude());
 
         try {
-            $composer = (new Parser())
+            $composer = (new ComposerJson())
                 ->withComposerJsonPath(path: $this->config->getPath())
                 ->withName()
                 ->withRequire()

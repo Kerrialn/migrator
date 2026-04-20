@@ -8,7 +8,7 @@ use Exception;
 use KerrialNewham\ComposerJsonParser\Exception\ComposerJsonNotFoundException;
 use KerrialNewham\ComposerJsonParser\Model\Composer;
 use KerrialNewham\ComposerJsonParser\Model\Package;
-use KerrialNewham\ComposerJsonParser\Parser;
+use KerrialNewham\ComposerJsonParser\ComposerJson;
 use KerrialNewham\Migrator\Config\Config;
 use KerrialNewham\Migrator\Data\Frameworks;
 use KerrialNewham\Migrator\DataTransferObject\Migration;
@@ -77,7 +77,7 @@ class AnalyseCommand extends Command
         $this->extractProjectFiles(path: $projectPath);
 
         try {
-            $composer = (new Parser())
+            $composer = (new ComposerJson())
                 ->withComposerJsonPath(path: $projectPath)
                 ->withName()
                 ->withRequire()
