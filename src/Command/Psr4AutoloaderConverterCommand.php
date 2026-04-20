@@ -52,7 +52,7 @@ class Psr4AutoloaderConverterCommand extends Command
         $isDryRun = (bool) $input->getOption('dry');
 
         $flags = ['split-multi-class-files', 'fix-directory-naming', 'capitalise-directory-names', 'sync-file-and-class-names', 'dump-autoload-classmap', 'optimizing-autoload'];
-        $active = array_filter($flags, fn(string $flag) => (bool) $input->getOption($flag));
+        $active = array_filter($flags, fn(string $flag): bool => (bool) $input->getOption($flag));
 
         if (empty($active)) {
             $this->io->error('No action specified. Use one or more flags: --' . implode(', --', $flags));
