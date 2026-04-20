@@ -12,8 +12,11 @@ use KerrialNewham\Migrator\Config\Config;
 use KerrialNewham\Migrator\DataTransferObject\Project;
 use Symfony\Component\Console\Application;
 
-//require(__DIR__ . '/../../../autoload.php');
-require __DIR__ . '/../vendor/autoload.php';
+if (file_exists(__DIR__ . '/../vendor/autoload.php')) {
+    require __DIR__ . '/../vendor/autoload.php';
+} else {
+    require __DIR__ . '/../../../autoload.php';
+}
 $file = getcwd() . '/migrator.php';
 
 if (!file_exists($file)) {
