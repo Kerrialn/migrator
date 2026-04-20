@@ -66,6 +66,13 @@ class Psr4AutoloaderConverterCommand extends Command
         $this->io->title('Starting PSR-4 Conversion');
 
         // 1. Extract multiple classes into separate files
+        $validActions = ['split-multi-class-files', 'fix-directory-naming', 'capitalise-directory-names', 'sync-file-and-class-names', 'dump-autoload-classmap', 'optimizing-autoload'];
+
+        if (!in_array($action, $validActions, true)) {
+            $this->io->error(sprintf('Unknown action "%s". Available actions: %s.', $action ?? '(none)', implode(', ', $validActions)));
+            return Command::INVALID;
+        }
+
         match ($action) {
             'split-multi-class-files' => $this->splitMultipleClasses($isDryRun),
             'fix-directory-naming' => $this->fixDirectoryNaming(),
