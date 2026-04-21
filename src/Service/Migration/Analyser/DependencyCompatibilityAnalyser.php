@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace KerrialNewham\Migrator\Service\Migration\Analyser;
 
 use KerrialNewham\ComposerJsonParser\Model\Composer;
-use KerrialNewham\ComposerJsonParser\Model\Package;
 use KerrialNewham\Migrator\Data\FrameworkCouplingSignatures;
 use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 use KerrialNewham\Migrator\Service\Migration\Analyser\Contract\MigrationAnalyserInterface;
