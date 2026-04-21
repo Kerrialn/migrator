@@ -14,6 +14,7 @@ use KerrialNewham\Migrator\DataTransferObject\Upgrade;
 use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 use KerrialNewham\Migrator\Enum\PhpVersionEnum;
 use KerrialNewham\Migrator\Enum\TransitionTypeEnum;
+use KerrialNewham\Migrator\Service\Calculator\MigrationCalculator;
 use KerrialNewham\Migrator\Service\Calculator\UpgradeCalculator;
 use KerrialNewham\Migrator\Service\FrameworkDetector;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -51,16 +52,13 @@ class AnalyseCommand extends Command
         if (!$transitionTypeEnum instanceof TransitionTypeEnum) {
             return Command::FAILURE;
         }
-        if ($transitionTypeEnum === TransitionTypeEnum::MIGRATION) {
-            $this->abortCommand($io);
-            return Command::INVALID;
-        }
         $this->resolveTransition(transitionTypeEnum: $transitionTypeEnum);
 
-        // 2. Ask which target framework or php version — only UPGRADE reaches here (MIGRATION returned above)
-        $target = $this->askTargetPhpVersion($io);
-
-
+        // 2. Ask target PHP version or target framework
+        $target = match ($transitionTypeEnum) {
+            TransitionTypeEnum::UPGRADE => $this->askTargetPhpVersion($io),
+            TransitionTypeEnum::MIGRATION => $this->askTargetFramework($io),
+        };
         $this->resolveTarget(target: $target);
         $io->progressStart(max: 100);
 
@@ -88,12 +86,18 @@ class AnalyseCommand extends Command
             $this->project->addFramework($framework);
         }
 
-        // 5. run Upgrade analysis — only UPGRADE reaches here
-        (new UpgradeCalculator())->calculate($this->project, $io);
+        // 5. run analysis
+        match ($transitionTypeEnum) {
+            TransitionTypeEnum::UPGRADE => (new UpgradeCalculator())->calculate($this->project, $io),
+            TransitionTypeEnum::MIGRATION => (new MigrationCalculator())->calculate($this->project, $io),
+        };
 
         // 6. output analysis report
         $io->progressFinish();
-        $this->printUpgradablityScore($io);
+        match ($transitionTypeEnum) {
+            TransitionTypeEnum::UPGRADE => $this->printUpgradablityScore($io),
+            TransitionTypeEnum::MIGRATION => $this->printMigratablityScore($io),
+        };
 
         return Command::SUCCESS;
     }
@@ -112,6 +116,17 @@ class AnalyseCommand extends Command
             return null;
         }
         return $objectiveTypeEnum;
+    }
+
+    private function askTargetFramework(SymfonyStyle $io): null|FrameworkTypeEnum
+    {
+        $targetFramework = $io->choice(question: 'What is your target framework?', choices: FrameworkTypeEnum::getFrameworkOptions());
+        $targetFrameworkEnum = FrameworkTypeEnum::tryFrom($targetFramework);
+        if (!$targetFrameworkEnum instanceof FrameworkTypeEnum) {
+            $io->error('Invalid framework type.');
+            return null;
+        }
+        return $targetFrameworkEnum;
     }
 
     private function askTargetPhpVersion(SymfonyStyle $io): null|PhpVersionEnum
@@ -204,10 +219,39 @@ class AnalyseCommand extends Command
         $io->success($difficulty);
     }
 
-    private function abortCommand(SymfonyStyle $io): int
+    private function printMigratablityScore(SymfonyStyle $io): void
     {
-        $io->error("Migration analysis is a work in progress, coming soon!");
-        return Command::INVALID;
+        $migration = $this->project->getMigration();
+        if ($migration === null) {
+            return;
+        }
+
+        $io->title('Project Migratability Scores');
+
+        $io->writeln("\n<fg=red>0-49: Very Difficult</>");
+        $io->writeln("<fg=yellow>50-79: Moderate</>");
+        $io->writeln("<fg=green>80-100: Straightforward</>\n");
+
+        $io->table(
+            ['Metric', 'Score', 'Weight'],
+            [
+                ['Framework Coupling', $migration->getFrameworkCouplingScore(), '35%'],
+                ['ORM Coupling', $migration->getOrmCouplingScore(), '25%'],
+                ['Dependency Compatibility', $migration->getDependencyCompatibilityScore(), '20%'],
+                ['Architecture Quality', $migration->getArchitectureScore(), '15%'],
+                ['Test Coverage', $migration->getTestCoverageScore(), '5%'],
+                ['Overall Score', $migration->getComplexity(), '—'],
+            ]
+        );
+
+        $difficulty = match (true) {
+            $migration->getComplexity() >= 0 && $migration->getComplexity() < 50 => "Very Difficult Migration",
+            $migration->getComplexity() >= 50 && $migration->getComplexity() < 80 => "Moderate Migration",
+            $migration->getComplexity() >= 80 && $migration->getComplexity() <= 100 => "Straightforward Migration",
+            default => throw new Exception('Unexpected complexity value'),
+        };
+
+        $io->success($difficulty);
     }
 
 }
