@@ -17,7 +17,7 @@ final class Framework
      */
     public function __construct(
         private readonly string $name,
-        private readonly PackageVersion $packageVersion,
+        private readonly null|PackageVersion $packageVersion,
         private FrameworkTypeEnum $frameworkTypeEnum,
         private null|float $certainty = null)
     {
@@ -58,7 +58,7 @@ final class Framework
         $this->daysUntilEndOfLife = $daysUntilEndOfLife;
     }
 
-    public function getPackageVersion(): PackageVersion
+    public function getPackageVersion(): null|PackageVersion
     {
         return $this->packageVersion;
     }

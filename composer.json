@@ -25,7 +25,10 @@
     "autoload": {
         "psr-4": {
             "KerrialNewham\\Migrator\\": "src/"
-        }
+        },
+        "exclude-from-classmap": [
+            "/vendor/phploc/"
+        ]
     },
     "autoload-dev": {
         "psr-4": {

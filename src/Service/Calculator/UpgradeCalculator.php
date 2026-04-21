@@ -147,6 +147,12 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         $frameworkCount = count($frameworks);
 
         foreach ($frameworks as $framework) {
+            if ($framework->getPackageVersion() === null) {
+                $totalScore += 100;
+                $io->progressAdvance();
+                continue;
+            }
+
             $currentVersion = $framework->getPackageVersion()->getVersionString();
             $targetFrameworkVersion = FrameworkTypeEnum::getTargetFrameworkVersion(
                 $framework->getFrameworkTypeEnum(),

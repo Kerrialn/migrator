@@ -119,7 +119,7 @@ enum FrameworkTypeEnum: string
             ],
         ];
 
-        return $compatibilityMap[$frameworkTypeEnum->value][$targetPhpVersionEnum->value];
+        return $compatibilityMap[$frameworkTypeEnum->value][$targetPhpVersionEnum->value] ?? null;
     }
 
 

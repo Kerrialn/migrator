@@ -38,7 +38,28 @@ final readonly class Frameworks
             new FrameworkPackage(type: FrameworkTypeEnum::PHALCON, name: 'phalcon/phalcon', isPrimary: true, weight: 50, frameworkPackages: new ArrayCollection([
                 new FrameworkPackage(type: FrameworkTypeEnum::PHALCON, name: 'phalcon/devtools', isPrimary: false, weight: 40, frameworkPackages: new ArrayCollection()),
             ])),
+            new FrameworkPackage(type: FrameworkTypeEnum::TEMPEST, name: 'tempest/framework', isPrimary: true, weight: 50, frameworkPackages: new ArrayCollection([
+                new FrameworkPackage(type: FrameworkTypeEnum::TEMPEST, name: 'tempest/core', isPrimary: false, weight: 40, frameworkPackages: new ArrayCollection()),
+                new FrameworkPackage(type: FrameworkTypeEnum::TEMPEST, name: 'tempest/console', isPrimary: false, weight: 25, frameworkPackages: new ArrayCollection()),
+            ])),
         ]);
+    }
+
+    /**
+     * @return array<string, list<string>>
+     */
+    public static function getFilesystemFingerprints(): array
+    {
+        return [
+            FrameworkTypeEnum::SYMFONY->value => ['bin/console', 'config/bundles.php', 'symfony.lock'],
+            FrameworkTypeEnum::LARAVEL->value => ['artisan', 'app/Http/Kernel.php', 'bootstrap/app.php'],
+            FrameworkTypeEnum::CODEIGNITER->value => ['spark', 'app/Config/App.php', 'system/CodeIgniter.php'],
+            FrameworkTypeEnum::YII->value => ['yii', 'config/web.php', 'config/console.php'],
+            FrameworkTypeEnum::ZEND->value => ['config/application.config.php', 'module/Application'],
+            FrameworkTypeEnum::CAKEPHP->value => ['bin/cake', 'config/app.php', 'src/Application.php'],
+            FrameworkTypeEnum::PHALCON->value => ['app/config/config.php', '.phalcon'],
+            FrameworkTypeEnum::TEMPEST->value => ['vendor/tempest', '.tempest'],
+        ];
     }
 
 }

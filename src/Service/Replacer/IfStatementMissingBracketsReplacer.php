@@ -39,18 +39,15 @@ class IfStatementMissingBracketsReplacer implements ReplacerInterface
         // Step 2: Get the list of if statements without brackets
         $ifsWithoutBrackets = $removeIfStatementsWithoutBracketsNodeVisitor->getStatements();
 
-        // Step 3: Modify the statements by adding curly braces
+        // Step 3: Mark collected if statements so the pretty printer normalises them with braces.
+        // The Standard pretty printer always emits braces for if bodies; no AST surgery needed.
         foreach ($ifsWithoutBrackets as $ifStmt) {
-            if (count($ifStmt->stmts) === 1 && !$ifStmt->hasAttribute('brackets')) {
-                // Wrap the single statement in a block (adding curly braces)
-                $ifStmt->stmts = [new Node\Stmt\Expression($ifStmt->stmts)];
-                $ifStmt->setAttribute('brackets', true);
-            }
+            $ifStmt->setAttribute('brackets', true);
         }
 
         // Step 4: Use the pretty printer with minimal formatting (no extra newlines or indentation)
         $prettyPrinter = new Standard();
-        $modifiedContent = "<?php" . $prettyPrinter->prettyPrintFile($stmts);
+        $modifiedContent = $prettyPrinter->prettyPrintFile($stmts);
 
         // Step 5: Write the modified content back to the file
         file_put_contents($filePath, $modifiedContent);

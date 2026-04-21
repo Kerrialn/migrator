@@ -6,21 +6,17 @@ namespace KerrialNewham\Migrator\Command;
 
 use Exception;
 use KerrialNewham\ComposerJsonParser\Exception\ComposerJsonNotFoundException;
-use KerrialNewham\ComposerJsonParser\Model\Composer;
-use KerrialNewham\ComposerJsonParser\Model\Package;
 use KerrialNewham\ComposerJsonParser\ComposerJson;
 use KerrialNewham\Migrator\Config\Config;
-use KerrialNewham\Migrator\Data\Frameworks;
 use KerrialNewham\Migrator\DataTransferObject\Migration;
 use KerrialNewham\Migrator\DataTransferObject\Project;
 use KerrialNewham\Migrator\DataTransferObject\Upgrade;
-use KerrialNewham\Migrator\DataValueObject\Framework;
-use KerrialNewham\Migrator\DataValueObject\FrameworkPackage;
 use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 use KerrialNewham\Migrator\Enum\PhpVersionEnum;
 use KerrialNewham\Migrator\Enum\TransitionTypeEnum;
 use KerrialNewham\Migrator\Service\Calculator\MigrationCalculator;
 use KerrialNewham\Migrator\Service\Calculator\UpgradeCalculator;
+use KerrialNewham\Migrator\Service\FrameworkDetector;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -35,6 +31,7 @@ class AnalyseCommand extends Command
     public function __construct(
         private readonly Project $project,
         private readonly Config $config,
+        private readonly FrameworkDetector $frameworkDetector = new FrameworkDetector(),
     )
     {
         parent::__construct();
@@ -79,6 +76,7 @@ class AnalyseCommand extends Command
                 ->withComposerJsonPath(path: $projectPath)
                 ->withName()
                 ->withRequire()
+                ->withRequireDev()
                 ->getComposer();
 
             $this->project->setComposer(composer: $composer);
@@ -89,7 +87,10 @@ class AnalyseCommand extends Command
         }
 
         // 4. Detect project frameworks & calculate certainty
-        $this->resolveFrameworks(composer: $this->project->getComposer());
+        $detectedFrameworks = $this->frameworkDetector->detect($projectPath, $this->project->getComposer());
+        foreach ($detectedFrameworks as $framework) {
+            $this->project->addFramework($framework);
+        }
 
         // 5. run Upgrade or Migration analysis
         match ($transitionTypeEnum) {
@@ -122,57 +123,6 @@ class AnalyseCommand extends Command
             return null;
         }
         return $objectiveTypeEnum;
-    }
-
-    private function resolveFrameworks(Composer $composer): void
-    {
-        $frameworks = Frameworks::getFrameworks();
-        $detectedFrameworks = $frameworks->filter(fn(FrameworkPackage $framework) => $composer->getRequire()->exists(
-            fn(int $key, Package $package): bool => $package->getName() === $framework->getName()
-        ));
-
-        foreach ($detectedFrameworks as $framework) {
-            $package = $composer->getRequire()->findFirst(
-                fn(int $key, Package $package): bool => $package->getName() === $framework->getName()
-            );
-
-            if (!$package) {
-                continue;
-            }
-
-            $certainty = $this->calculateFrameworkCertainty($composer, $framework->getType());
-
-            $this->project->addFramework(new Framework(
-                name: $framework->getName(),
-                packageVersion: $package->getPackageVersion(),
-                frameworkTypeEnum: $framework->getType(),
-                certainty: $certainty
-            ));
-        }
-    }
-
-    private function calculateFrameworkCertainty(Composer $composer, FrameworkTypeEnum $frameworkType): float
-    {
-        $frameworks = Frameworks::getFrameworks();
-        $selectedFrameworks = $frameworks->filter(
-            fn(FrameworkPackage $framework): bool => $framework->getType() === $frameworkType
-        );
-
-        $totalWeight = 0;
-
-        foreach ($selectedFrameworks as $framework) {
-            if ($composer->getRequire()->exists(fn(int $key, Package $package): bool => $package->getName() === $framework->getName())) {
-                $totalWeight += $framework->getWeight();
-            }
-
-            $matchingExtras = $framework->getFrameworkPackages()->filter(fn(FrameworkPackage $extraPackage) => $composer->getRequire()->exists(fn(int $key, Package $package): bool => $package->getName() === $extraPackage->getName())
-            );
-
-            $extraWeight = array_sum($matchingExtras->map(fn(FrameworkPackage $extraPackage): int => $extraPackage->getWeight())->toArray());
-            $totalWeight += $extraWeight;
-        }
-
-        return min($totalWeight, 100);
     }
 
     private function askTargetFramework(SymfonyStyle $io): null|FrameworkTypeEnum
