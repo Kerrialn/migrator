@@ -7,13 +7,7 @@ use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 
 final readonly class FrameworkPackage
 {
-    /**
-     * @param FrameworkTypeEnum $type
-     * @param string $name
-     * @param bool $isPrimary
-     * @param int $weight
-     * @param ArrayCollection $frameworkPackages
-     */
+    /** @param ArrayCollection<int, FrameworkPackage> $frameworkPackages */
     public function __construct(private FrameworkTypeEnum $type, private string $name, private bool $isPrimary, private int $weight, private ArrayCollection $frameworkPackages)
     {
     }
@@ -38,6 +32,7 @@ final readonly class FrameworkPackage
         return $this->weight;
     }
 
+    /** @return ArrayCollection<int, FrameworkPackage> */
     public function getFrameworkPackages(): ArrayCollection
     {
         return $this->frameworkPackages;

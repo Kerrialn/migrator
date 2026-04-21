@@ -7,14 +7,13 @@ use PhpParser\NodeVisitorAbstract;
 
 final class RemoveIfStatementsWithoutBracketsNodeVisitor extends NodeVisitorAbstract
 {
+    /** @var Node\Stmt\If_[] */
     private array $statements = [];
 
-    public function enterNode(Node $node)
+    public function enterNode(Node $node): Node|null
     {
         if ($node instanceof Node\Stmt\If_) {
-            // If the statement has no braces and has only one statement inside
             if (count($node->stmts) === 1 && !$node->hasAttribute('brackets')) {
-                // Wrap the single statement with a block (adding curly braces)
                 $this->statements[] = $node;
             }
 
@@ -24,6 +23,7 @@ final class RemoveIfStatementsWithoutBracketsNodeVisitor extends NodeVisitorAbst
         return null;
     }
 
+    /** @return Node\Stmt\If_[] */
     public function getStatements(): array
     {
         return $this->statements;

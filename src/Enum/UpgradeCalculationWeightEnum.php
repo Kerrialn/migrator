@@ -13,6 +13,7 @@ enum UpgradeCalculationWeightEnum: int
     case PHP_VERSION = 7;
     case TESTING_CI = 3;
 
+    /** @return array<string, int> */
     public static function getWeights() : array
     {
         return [

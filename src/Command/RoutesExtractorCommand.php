@@ -74,6 +74,7 @@ class RoutesExtractorCommand extends Command
         return Command::SUCCESS;
     }
 
+    /** @param string[] $exclude */
     private function extractRouteFiles(string $path, array $exclude = []): void
     {
         $finder = new Finder();
@@ -84,7 +85,7 @@ class RoutesExtractorCommand extends Command
         }
     }
 
-    private function extractRoutesFromFile($file): void
+    private function extractRoutesFromFile(\Symfony\Component\Finder\SplFileInfo $file): void
     {
         $content = $file->getContents();
         preg_match_all('/\$route\[\'(.*?)\'\] = \'(.*?)\'/', (string) $content, $matches, PREG_SET_ORDER);

@@ -14,7 +14,6 @@ use KerrialNewham\Migrator\DataTransferObject\Upgrade;
 use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 use KerrialNewham\Migrator\Enum\PhpVersionEnum;
 use KerrialNewham\Migrator\Enum\TransitionTypeEnum;
-use KerrialNewham\Migrator\Service\Calculator\MigrationCalculator;
 use KerrialNewham\Migrator\Service\Calculator\UpgradeCalculator;
 use KerrialNewham\Migrator\Service\FrameworkDetector;
 use Symfony\Component\Console\Attribute\AsCommand;
@@ -58,11 +57,8 @@ class AnalyseCommand extends Command
         }
         $this->resolveTransition(transitionTypeEnum: $transitionTypeEnum);
 
-        // 2. Ask which target framework or php version
-        $target = match ($transitionTypeEnum) {
-            TransitionTypeEnum::UPGRADE => $this->askTargetPhpVersion($io),
-            TransitionTypeEnum::MIGRATION => $this->askTargetFramework($io),
-        };
+        // 2. Ask which target framework or php version — only UPGRADE reaches here (MIGRATION returned above)
+        $target = $this->askTargetPhpVersion($io);
 
 
         $this->resolveTarget(target: $target);
@@ -92,19 +88,12 @@ class AnalyseCommand extends Command
             $this->project->addFramework($framework);
         }
 
-        // 5. run Upgrade or Migration analysis
-        match ($transitionTypeEnum) {
-            TransitionTypeEnum::UPGRADE => (new UpgradeCalculator())->calculate($this->project, $io),
-            TransitionTypeEnum::MIGRATION => (new MigrationCalculator())->calculate($this->project, $io),
-        };
+        // 5. run Upgrade analysis — only UPGRADE reaches here
+        (new UpgradeCalculator())->calculate($this->project, $io);
 
-        // 5. output analysis report
+        // 6. output analysis report
         $io->progressFinish();
-
-        match ($transitionTypeEnum) {
-            TransitionTypeEnum::UPGRADE => $this->printUpgradablityScore($io),
-            TransitionTypeEnum::MIGRATION => $this->printMigratablityScore($io),
-        };
+        $this->printUpgradablityScore($io);
 
         return Command::SUCCESS;
     }
@@ -125,24 +114,6 @@ class AnalyseCommand extends Command
         return $objectiveTypeEnum;
     }
 
-    private function askTargetFramework(SymfonyStyle $io): null|FrameworkTypeEnum
-    {
-        $frameworkType = $io->choice(question: 'What is your target framework?', choices: [
-            FrameworkTypeEnum::SYMFONY->value => FrameworkTypeEnum::SYMFONY->value,
-            FrameworkTypeEnum::LARAVEL->value => FrameworkTypeEnum::LARAVEL->value,
-            FrameworkTypeEnum::TEMPEST->value => FrameworkTypeEnum::TEMPEST->value,
-        ]);
-
-        $frameworkTypeEnum = FrameworkTypeEnum::tryFrom($frameworkType);
-
-        if (!$frameworkTypeEnum instanceof FrameworkTypeEnum) {
-            $io->error('Invalid objective type.');
-            return null;
-        }
-
-        return $frameworkTypeEnum;
-    }
-
     private function askTargetPhpVersion(SymfonyStyle $io): null|PhpVersionEnum
     {
         $targetPhpVersion = $io->choice(question: 'What is your target PHP version?', choices: [
@@ -160,6 +131,7 @@ class AnalyseCommand extends Command
         return $targetPhpVersionEnum;
     }
 
+    /** @param string[] $exclude */
     private function extractProjectFiles(string $path, array $exclude = []): void
     {
         $finder = new Finder();
@@ -176,7 +148,7 @@ class AnalyseCommand extends Command
         $this->project->setUpgrade($upgrade);
     }
 
-    private function setupMigration()
+    private function setupMigration(): void
     {
         $migration = new Migration();
         $this->project->setMigration($migration);
@@ -197,6 +169,7 @@ class AnalyseCommand extends Command
         match (true) {
             $target instanceof PhpVersionEnum => $this->project->getUpgrade()->setTargetPhpVersion($target),
             $target instanceof FrameworkTypeEnum => $this->project->getMigration()->setTargetFramework($target),
+            default => null,
         };
     }
 
@@ -229,11 +202,6 @@ class AnalyseCommand extends Command
         };
 
         $io->success($difficulty);
-    }
-
-    private function printMigratablityScore(SymfonyStyle $io): void
-    {
-        $io->title('Migration coming soon');
     }
 
     private function abortCommand(SymfonyStyle $io): int

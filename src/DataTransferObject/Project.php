@@ -18,9 +18,7 @@ final class Project
      */
     private readonly Collection $frameworks;
 
-    /**
-     * @var Collection<int,SplFileInfo> $projectPhpFiles
-     */
+    /** @var Collection<int, SplFileInfo> */
     private readonly Collection $files;
 
     private null|TransitionTypeEnum $transitionTypeEnum = null;

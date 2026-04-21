@@ -56,6 +56,7 @@ class SchemeMapCommand extends Command
             $label .= " }"; // Close the record structure
 
             // Create the vertex for the current table
+            /** @phpstan-ignore argument.type */
             $node = $graph->createVertex($table->getName());
             $node->setAttribute('graphviz.shape', 'record'); // Use "record" shape
             $node->setAttribute('graphviz.label', $label); // Set correct label format

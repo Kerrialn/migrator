@@ -15,6 +15,7 @@ enum FrameworkTypeEnum: string
     case PHALCON = 'phalcon';
     case NONE = 'none';
 
+    /** @return array<string, string> */
     public static function getFrameworkOptions(): array
     {
         return [

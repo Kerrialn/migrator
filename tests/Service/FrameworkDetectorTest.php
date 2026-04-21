@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Test\Service;
 
-use Doctrine\Common\Collections\ArrayCollection;
 use KerrialNewham\ComposerJsonParser\Enum\PackageTypeEnum;
 use KerrialNewham\ComposerJsonParser\Model\Composer;
 use KerrialNewham\ComposerJsonParser\Model\Package;

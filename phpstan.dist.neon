@@ -4,3 +4,4 @@ parameters:
         - bin/
         - src/
         - tests/
+    treatPhpDocTypesAsCertain: false

@@ -337,12 +337,6 @@ class Psr4AutoloaderConverterCommand extends Command
         return $namespace ?: null;
     }
 
-    private function getNamespacePath(string $filePath): string
-    {
-        $baseDir = 'src';
-        return str_replace($baseDir, '', $filePath);
-    }
-
     private function optimizeNamespaceRoot(): void
     {
         $this->io->section('Optimizing namespace root structure in composer.json');
@@ -350,6 +344,7 @@ class Psr4AutoloaderConverterCommand extends Command
         // TODO: Implement logic to optimize namespace root structure
     }
 
+    /** @param string[] $exclude */
     private function extractProjectFiles(string $path, array $exclude = []): void
     {
         $finder = new Finder();

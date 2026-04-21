@@ -11,7 +11,7 @@ use RecursiveIteratorIterator;
 class ShortTagReplacer implements ReplacerInterface
 {
 
-    public function replace(string $dir)
+    public function replace(string $dir): void
     {
         $files = new RecursiveIteratorIterator(new RecursiveDirectoryIterator($dir));
 

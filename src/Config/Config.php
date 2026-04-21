@@ -3,6 +3,7 @@
 namespace KerrialNewham\Migrator\Config;
 final class Config
 {
+    /** @param string[] $exclude */
     public function __construct(
         private string $path,
         private array $exclude = [],
@@ -21,11 +22,13 @@ final class Config
         $this->path = $path;
     }
 
+    /** @return string[] */
     public function getExclude(): array
     {
         return $this->exclude;
     }
 
+    /** @param string[] $exclude */
     public function setExclude(array $exclude): void
     {
         $this->exclude = $exclude;

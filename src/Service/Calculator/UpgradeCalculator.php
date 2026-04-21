@@ -194,6 +194,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         return round($totalWeightedScore, 2);
     }
 
+    /** @return ArrayCollection<int, PackageVersionInfo> */
     private function getOutdatedDependencies(Composer $composer): ArrayCollection
     {
         /**
@@ -218,7 +219,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         return $outdatedPackages;
     }
 
-    private function getMajorVersionDifference($currentVersion, $latestVersion): int
+    private function getMajorVersionDifference(string|float $currentVersion, string|float $latestVersion): int
     {
         $currentVersion = preg_replace('/[^0-9.]/', '', (string)$currentVersion);
         $latestVersion = preg_replace('/[^0-9.]/', '', (string)$latestVersion);
@@ -232,7 +233,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         return abs($latestMajor - $currentMajor);
     }
 
-    private function getMinorVersionDifference($currentVersion, $latestVersion): int
+    private function getMinorVersionDifference(string|float $currentVersion, string|float $latestVersion): int
     {
         $currentVersion = preg_replace('/[^0-9.]/', '', (string)$currentVersion);
         $latestVersion = preg_replace('/[^0-9.]/', '', (string)$latestVersion);

@@ -11,7 +11,6 @@ use PhpParser\Error;
 use PhpParser\NodeTraverser;
 use PhpParser\ParserFactory;
 use PhpParser\PhpVersion;
-use PhpParser\Node as Node;
 use PhpParser\PrettyPrinter\Standard;
 use RuntimeException;
 use Symfony\Component\Finder\SplFileInfo;

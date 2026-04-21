@@ -13,6 +13,7 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\Finder\Finder;
 
 #[AsCommand(name: 'replace')]
 class ReplacerCommand extends Command
@@ -41,7 +42,10 @@ class ReplacerCommand extends Command
 
             case 'old-if-syntax':
                 $io->note("Fixing old if statements...");
-                (new IfStatementMissingBracketsReplacer())->replace($this->config->getPath());
+                $replacer = new IfStatementMissingBracketsReplacer();
+                foreach ((new Finder())->in($this->config->getPath())->files()->name('*.php') as $file) {
+                    $replacer->replace($file);
+                }
                 break;
 
             default:

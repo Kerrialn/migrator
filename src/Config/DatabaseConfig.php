@@ -46,6 +46,7 @@ final readonly class DatabaseConfig
         return $this->driver;
     }
 
+    /** @return array{host: string, port: int, dbname: string, user: string, password: string, driver: string} */
     public function toConnectionParams(): array
     {
         return [
