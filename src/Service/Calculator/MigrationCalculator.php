@@ -27,7 +27,9 @@ final readonly class MigrationCalculator implements CalculatorInterface
 
         $files = $project->getFiles();
         $primaryFramework = $project->getPrimaryFramework();
-        $sourceFramework = $primaryFramework?->getFrameworkTypeEnum() ?? FrameworkTypeEnum::NONE;
+        $sourceFramework = $migration->getSourceFramework()
+            ?? $primaryFramework?->getFrameworkTypeEnum()
+            ?? FrameworkTypeEnum::NONE;
         $targetFramework = $migration->getTargetFramework();
 
         $io->info('analysing framework coupling');

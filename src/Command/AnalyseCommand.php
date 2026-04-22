@@ -54,12 +54,14 @@ class AnalyseCommand extends Command
         }
         $this->resolveTransition(transitionTypeEnum: $transitionTypeEnum);
 
-        // 2. Ask target PHP version or target framework
-        $target = match ($transitionTypeEnum) {
-            TransitionTypeEnum::UPGRADE => $this->askTargetPhpVersion($io),
-            TransitionTypeEnum::MIGRATION => $this->askTargetFramework($io),
-        };
-        $this->resolveTarget(target: $target);
+        // 2. Ask target PHP version or source+target framework
+        if ($transitionTypeEnum === TransitionTypeEnum::UPGRADE) {
+            $this->resolveTarget(target: $this->askTargetPhpVersion($io));
+        } else {
+            $source = $this->askSourceFramework($io);
+            $this->resolveTarget(target: $this->askTargetFramework($io));
+            $this->project->getMigration()?->setSourceFramework($source);
+        }
         $io->progressStart(max: 100);
 
         // 3. extract project files
@@ -99,13 +101,6 @@ class AnalyseCommand extends Command
             $io->info('No framework detected.');
         }
 
-        if ($transitionTypeEnum === TransitionTypeEnum::MIGRATION) {
-            $targetFramework = $this->project->getMigration()?->getTargetFramework();
-            if ($primaryFramework !== null && $targetFramework !== null && $primaryFramework->getFrameworkTypeEnum() === $targetFramework) {
-                $io->note(sprintf('Primary framework matches target (%s) — analysing remaining coupling and migration completeness.', $targetFramework->value));
-            }
-        }
-
         // 5. run analysis
         match ($transitionTypeEnum) {
             TransitionTypeEnum::UPGRADE => (new UpgradeCalculator())->calculate($this->project, $io),
@@ -136,6 +131,17 @@ class AnalyseCommand extends Command
             return null;
         }
         return $objectiveTypeEnum;
+    }
+
+    private function askSourceFramework(SymfonyStyle $io): null|FrameworkTypeEnum
+    {
+        $sourceFramework = $io->choice(question: 'What framework are you migrating FROM?', choices: FrameworkTypeEnum::getFrameworkOptions());
+        $sourceFrameworkEnum = FrameworkTypeEnum::tryFrom(strtolower((string) $sourceFramework));
+        if (!$sourceFrameworkEnum instanceof FrameworkTypeEnum) {
+            $io->error('Invalid framework type.');
+            return null;
+        }
+        return $sourceFrameworkEnum;
     }
 
     private function askTargetFramework(SymfonyStyle $io): null|FrameworkTypeEnum

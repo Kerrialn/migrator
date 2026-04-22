@@ -8,6 +8,7 @@ use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 
 class Migration
 {
+    private null|FrameworkTypeEnum $sourceFramework = null;
     private null|FrameworkTypeEnum $targetFramework = null;
     private float $frameworkCouplingScore = 0.0;
     private float $databaseCouplingScore = 0.0;
@@ -16,6 +17,16 @@ class Migration
     private float $architectureScore = 0.0;
     private float $testCoverageScore = 0.0;
     private float $complexity = 0.0;
+
+    public function getSourceFramework(): ?FrameworkTypeEnum
+    {
+        return $this->sourceFramework;
+    }
+
+    public function setSourceFramework(?FrameworkTypeEnum $sourceFramework): void
+    {
+        $this->sourceFramework = $sourceFramework;
+    }
 
     public function getTargetFramework(): ?FrameworkTypeEnum
     {
