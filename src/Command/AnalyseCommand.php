@@ -87,16 +87,21 @@ class AnalyseCommand extends Command
         }
 
         $primaryFramework = $this->project->getPrimaryFramework();
+        $detectedCount = $this->project->getFrameworks()->count();
         if ($primaryFramework !== null) {
             $certainty = $primaryFramework->getCertainty() !== null ? sprintf(' (certainty: %s%%)', $primaryFramework->getCertainty()) : '';
-            $io->info(sprintf('Detected framework: %s%s', $primaryFramework->getFrameworkTypeEnum()->value, $certainty));
+            if ($detectedCount > 1) {
+                $io->info(sprintf('Mixed codebase detected (%d frameworks) — primary: %s%s', $detectedCount, $primaryFramework->getFrameworkTypeEnum()->value, $certainty));
+            } else {
+                $io->info(sprintf('Detected framework: %s%s', $primaryFramework->getFrameworkTypeEnum()->value, $certainty));
+            }
         } else {
             $io->info('No framework detected.');
         }
 
         if ($transitionTypeEnum === TransitionTypeEnum::MIGRATION) {
             $targetFramework = $this->project->getMigration()?->getTargetFramework();
-            if ($primaryFramework !== null && $targetFramework !== null && $primaryFramework->getFrameworkTypeEnum() === $targetFramework) {
+            if ($detectedCount === 1 && $primaryFramework !== null && $targetFramework !== null && $primaryFramework->getFrameworkTypeEnum() === $targetFramework) {
                 $io->progressFinish();
                 $io->warning(sprintf('This project is already running on %s. No migration needed.', $targetFramework->value));
                 return Command::SUCCESS;
