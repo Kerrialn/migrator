@@ -26,6 +26,7 @@ final readonly class ArchitectureAnalyser implements MigrationAnalyserInterface
         $repositoryFiles = 0;
         $interfaceFiles = 0;
         $diFiles = 0;
+        $ormEntityFiles = 0;
 
         foreach ($this->files as $file) {
             $path = strtolower($file->getPathname());
@@ -47,20 +48,32 @@ final readonly class ArchitectureAnalyser implements MigrationAnalyserInterface
             if ((bool) preg_match('/public\s+function\s+__construct\s*\([^)]*[A-Z][a-zA-Z\\\\]+\s+\$/', $content)) {
                 $diFiles++;
             }
+
+            // Doctrine Data Mapper entities represent proper separation of concerns
+            if (
+                str_contains($content, 'Doctrine\ORM\Mapping')
+                || str_contains($content, '#[ORM\\')
+                || str_contains($content, '@ORM\\')
+            ) {
+                $ormEntityFiles++;
+            }
         }
 
-        // Service layer  — up to 30 pts (10% of files in /service = full marks)
-        $serviceScore = min(30.0, ($serviceFiles / $total) * 300.0);
+        // Service layer — up to 25 pts (10% of files in /service = full marks)
+        $serviceScore = min(25.0, ($serviceFiles / $total) * 250.0);
 
-        // Repository pattern — up to 25 pts
-        $repositoryScore = min(25.0, ($repositoryFiles / $total) * 250.0);
+        // Repository pattern — up to 20 pts
+        $repositoryScore = min(20.0, ($repositoryFiles / $total) * 200.0);
 
-        // Interface usage — up to 25 pts (25% of files defining interfaces = full marks)
-        $interfaceScore = min(25.0, ($interfaceFiles / $total) * 100.0);
+        // Interface usage — up to 20 pts (20% of files defining interfaces = full marks)
+        $interfaceScore = min(20.0, ($interfaceFiles / $total) * 100.0);
 
         // Constructor DI — up to 20 pts (25% of files using DI = full marks)
         $diScore = min(20.0, ($diFiles / $total) * 80.0);
 
-        return round($serviceScore + $repositoryScore + $interfaceScore + $diScore, 2);
+        // Data Mapper ORM (Doctrine) — up to 15 pts (5% of files as entities = full marks)
+        $ormScore = min(15.0, ($ormEntityFiles / $total) * 300.0);
+
+        return round($serviceScore + $repositoryScore + $interfaceScore + $diScore + $ormScore, 2);
     }
 }

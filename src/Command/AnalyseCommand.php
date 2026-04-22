@@ -94,6 +94,12 @@ class AnalyseCommand extends Command
             $certainty = $primaryFramework->getCertainty() !== null ? sprintf(' (certainty: %s%%)', $primaryFramework->getCertainty()) : '';
             if ($detectedCount > 1) {
                 $io->info(sprintf('Mixed codebase detected (%d frameworks) — primary: %s%s', $detectedCount, $primaryFramework->getFrameworkTypeEnum()->value, $certainty));
+                if ($transitionTypeEnum === TransitionTypeEnum::MIGRATION) {
+                    $io->warning(
+                        'Mid-migration codebase detected. Legacy framework files still present alongside new code will skew coupling scores upward. ' .
+                        'For an accurate picture of the new code layer, add your legacy directories to the exclude list in migrator.php.'
+                    );
+                }
             } else {
                 $io->info(sprintf('Detected framework: %s%s', $primaryFramework->getFrameworkTypeEnum()->value, $certainty));
             }
