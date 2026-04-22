@@ -121,7 +121,8 @@ class AnalyseCommand extends Command
     private function askTargetFramework(SymfonyStyle $io): null|FrameworkTypeEnum
     {
         $targetFramework = $io->choice(question: 'What is your target framework?', choices: FrameworkTypeEnum::getFrameworkOptions());
-        $targetFrameworkEnum = FrameworkTypeEnum::tryFrom($targetFramework);
+        // Symfony Console returns the array key for associative choices (e.g. 'SYMFONY'), not the value ('symfony')
+        $targetFrameworkEnum = FrameworkTypeEnum::tryFrom(strtolower($targetFramework));
         if (!$targetFrameworkEnum instanceof FrameworkTypeEnum) {
             $io->error('Invalid framework type.');
             return null;
