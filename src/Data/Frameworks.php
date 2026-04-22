@@ -56,8 +56,10 @@ final readonly class Frameworks
             FrameworkTypeEnum::CODEIGNITER->value => [
                 // CI4
                 'spark', 'app/Config/App.php',
-                // CI3
+                // CI3 standard structure
                 'application/config/config.php', 'application/controllers', 'application/models',
+                // CI3 non-standard/embedded (e.g. PyroCMS)
+                'system/codeigniter/core', 'system/cms/controllers',
             ],
             FrameworkTypeEnum::YII->value => ['yii', 'config/web.php', 'config/console.php'],
             FrameworkTypeEnum::ZEND->value => ['config/application.config.php', 'module/Application'],

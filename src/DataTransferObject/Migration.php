@@ -16,6 +16,7 @@ class Migration
     private float $dependencyCompatibilityScore = 0.0;
     private float $architectureScore = 0.0;
     private float $testCoverageScore = 0.0;
+    private float $codeSizeScore = 0.0;
     private float $complexity = 0.0;
 
     public function getSourceFramework(): ?FrameworkTypeEnum
@@ -96,6 +97,16 @@ class Migration
     public function setTestCoverageScore(float $testCoverageScore): void
     {
         $this->testCoverageScore = $testCoverageScore;
+    }
+
+    public function getCodeSizeScore(): float
+    {
+        return $this->codeSizeScore;
+    }
+
+    public function setCodeSizeScore(float $codeSizeScore): void
+    {
+        $this->codeSizeScore = $codeSizeScore;
     }
 
     public function getComplexity(): float

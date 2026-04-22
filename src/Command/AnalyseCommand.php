@@ -255,26 +255,31 @@ class AnalyseCommand extends Command
 
         $io->title('Project Migratability Scores');
 
-        $io->writeln("\n<fg=red>0-49: Very Difficult</>");
-        $io->writeln("<fg=yellow>50-79: Moderate</>");
-        $io->writeln("<fg=green>80-100: Straightforward</>\n");
+        $io->writeln("\n<fg=red>0-35: Extremely Difficult</>");
+        $io->writeln("<fg=red>35-55: Very Difficult</>");
+        $io->writeln("<fg=yellow>55-70: Difficult</>");
+        $io->writeln("<fg=yellow>70-85: Moderate</>");
+        $io->writeln("<fg=green>85-100: Straightforward</>\n");
 
         $io->table(
             ['Metric', 'Score', 'Weight'],
             [
-                ['Framework Coupling', $migration->getFrameworkCouplingScore(), '35%'],
-                ['Database Coupling', $migration->isDatabaseLayerDetected() ? $migration->getDatabaseCouplingScore() : 'No database layer detected', '25%'],
-                ['Dependency Compatibility', $migration->getDependencyCompatibilityScore(), '20%'],
-                ['Architecture Quality', $migration->getArchitectureScore(), '15%'],
+                ['Framework Coupling', $migration->getFrameworkCouplingScore(), '30%'],
+                ['Database Coupling', $migration->isDatabaseLayerDetected() ? $migration->getDatabaseCouplingScore() : 'No database layer detected', '20%'],
+                ['Dependency Compatibility', $migration->getDependencyCompatibilityScore(), '10%'],
+                ['Architecture Quality', $migration->getArchitectureScore(), '25%'],
                 ['Test Coverage', $migration->getTestCoverageScore(), '5%'],
+                ['Codebase Size', $migration->getCodeSizeScore(), '10%'],
                 ['Overall Score', $migration->getComplexity(), '—'],
             ]
         );
 
         $difficulty = match (true) {
-            $migration->getComplexity() >= 0 && $migration->getComplexity() < 50 => "Very Difficult Migration",
-            $migration->getComplexity() >= 50 && $migration->getComplexity() < 80 => "Moderate Migration",
-            $migration->getComplexity() >= 80 && $migration->getComplexity() <= 100 => "Straightforward Migration",
+            $migration->getComplexity() >= 0 && $migration->getComplexity() < 35 => "Extremely Difficult Migration",
+            $migration->getComplexity() >= 35 && $migration->getComplexity() < 55 => "Very Difficult Migration",
+            $migration->getComplexity() >= 55 && $migration->getComplexity() < 70 => "Difficult Migration",
+            $migration->getComplexity() >= 70 && $migration->getComplexity() < 85 => "Moderate Migration",
+            $migration->getComplexity() >= 85 && $migration->getComplexity() <= 100 => "Straightforward Migration",
             default => throw new Exception('Unexpected complexity value'),
         };
 

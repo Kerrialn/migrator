@@ -64,6 +64,9 @@ final readonly class FrameworkCouplingSignatures
                     '$this->load->', '$this->db->', '$this->input->',
                     '$this->session->', '$this->uri->', '$this->config->item(',
                     '$this->lang->', '$this->output->', '$this->cache->',
+                    '$this->CI->', 'get_instance()',
+                    // CI3 security header present in virtually every CI3 file
+                    "defined('BASEPATH')", 'defined("BASEPATH")',
                 ],
                 'facades' => [],
                 'baseClasses' => [

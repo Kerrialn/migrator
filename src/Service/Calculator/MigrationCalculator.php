@@ -10,6 +10,7 @@ use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
 use KerrialNewham\Migrator\Enum\MigrationCalculationWeightEnum;
 use KerrialNewham\Migrator\Service\Calculator\Contract\CalculatorInterface;
 use KerrialNewham\Migrator\Service\Migration\Analyser\ArchitectureAnalyser;
+use KerrialNewham\Migrator\Service\Migration\Analyser\CodebaseSizeAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\DependencyCompatibilityAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\FrameworkCouplingAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\DatabaseCouplingAnalyser;
@@ -60,7 +61,13 @@ final readonly class MigrationCalculator implements CalculatorInterface
         $migration->setTestCoverageScore(
             (new TestCoverageAnalyser($files))->analyse()
         );
-        $io->progressAdvance(20);
+        $io->progressAdvance(16);
+
+        $io->info('analysing codebase size');
+        $migration->setCodeSizeScore(
+            (new CodebaseSizeAnalyser($files))->analyse()
+        );
+        $io->progressAdvance(4);
 
         $migration->setComplexity($this->calculateTotalScore($migration));
     }
@@ -73,6 +80,7 @@ final readonly class MigrationCalculator implements CalculatorInterface
             MigrationCalculationWeightEnum::DEPENDENCY_COMPATIBILITY->name => $migration->getDependencyCompatibilityScore(),
             MigrationCalculationWeightEnum::ARCHITECTURE->name => $migration->getArchitectureScore(),
             MigrationCalculationWeightEnum::TEST_COVERAGE->name => $migration->getTestCoverageScore(),
+            MigrationCalculationWeightEnum::CODEBASE_SIZE->name => $migration->getCodeSizeScore(),
         ];
 
         $totalWeightedScore = 0.0;
