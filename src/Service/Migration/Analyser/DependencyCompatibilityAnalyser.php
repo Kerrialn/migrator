@@ -14,6 +14,7 @@ final readonly class DependencyCompatibilityAnalyser implements MigrationAnalyse
     public function __construct(
         private ?Composer $composer,
         private FrameworkTypeEnum $sourceFramework,
+        private ?FrameworkTypeEnum $targetFramework = null,
     ) {
     }
 
@@ -33,11 +34,19 @@ final readonly class DependencyCompatibilityAnalyser implements MigrationAnalyse
             return 100.0;
         }
 
-        $specificPrefixes = FrameworkCouplingSignatures::getSignatures()[$this->sourceFramework->value]['specificPackagePrefixes'] ?? [];
+        $sourcePrefixes = FrameworkCouplingSignatures::getSignatures()[$this->sourceFramework->value]['specificPackagePrefixes'] ?? [];
+        $targetPrefixes = $this->targetFramework !== null
+            ? (FrameworkCouplingSignatures::getSignatures()[$this->targetFramework->value]['specificPackagePrefixes'] ?? [])
+            : [];
+
         $frameworkSpecificCount = 0;
 
         foreach ($allPackages as $package) {
-            if ($this->isFrameworkSpecific($package->getName(), $specificPrefixes)) {
+            $isSourceSpecific = $this->isFrameworkSpecific($package->getName(), $sourcePrefixes);
+            // Packages already compatible with the target are not a migration burden
+            $isTargetCompatible = $targetPrefixes !== [] && $this->isFrameworkSpecific($package->getName(), $targetPrefixes);
+
+            if ($isSourceSpecific && !$isTargetCompatible) {
                 $frameworkSpecificCount++;
             }
         }

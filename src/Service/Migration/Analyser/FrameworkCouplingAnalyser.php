@@ -16,12 +16,18 @@ final readonly class FrameworkCouplingAnalyser implements MigrationAnalyserInter
     public function __construct(
         private Collection $files,
         private FrameworkTypeEnum $sourceFramework,
+        private ?FrameworkTypeEnum $targetFramework = null,
     ) {
     }
 
     public function analyse(): float
     {
         if ($this->files->isEmpty()) {
+            return 100.0;
+        }
+
+        // Coupling to the source framework is irrelevant when migrating to it
+        if ($this->targetFramework !== null && $this->sourceFramework === $this->targetFramework) {
             return 100.0;
         }
 

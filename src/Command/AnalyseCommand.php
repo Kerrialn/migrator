@@ -86,6 +86,16 @@ class AnalyseCommand extends Command
             $this->project->addFramework($framework);
         }
 
+        if ($transitionTypeEnum === TransitionTypeEnum::MIGRATION) {
+            $primaryFramework = $this->project->getPrimaryFramework();
+            $targetFramework = $this->project->getMigration()?->getTargetFramework();
+            if ($primaryFramework !== null && $targetFramework !== null && $primaryFramework->getFrameworkTypeEnum() === $targetFramework) {
+                $io->progressFinish();
+                $io->warning(sprintf('This project is already running on %s. No migration needed.', $targetFramework->value));
+                return Command::SUCCESS;
+            }
+        }
+
         // 5. run analysis
         match ($transitionTypeEnum) {
             TransitionTypeEnum::UPGRADE => (new UpgradeCalculator())->calculate($this->project, $io),

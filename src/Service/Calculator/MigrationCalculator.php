@@ -28,10 +28,11 @@ final readonly class MigrationCalculator implements CalculatorInterface
         $files = $project->getFiles();
         $primaryFramework = $project->getPrimaryFramework();
         $sourceFramework = $primaryFramework?->getFrameworkTypeEnum() ?? FrameworkTypeEnum::NONE;
+        $targetFramework = $migration->getTargetFramework();
 
         $io->info('analysing framework coupling');
         $migration->setFrameworkCouplingScore(
-            (new FrameworkCouplingAnalyser($files, $sourceFramework))->analyse()
+            (new FrameworkCouplingAnalyser($files, $sourceFramework, $targetFramework))->analyse()
         );
         $io->progressAdvance(20);
 
@@ -43,7 +44,7 @@ final readonly class MigrationCalculator implements CalculatorInterface
 
         $io->info('analysing dependency compatibility');
         $migration->setDependencyCompatibilityScore(
-            (new DependencyCompatibilityAnalyser($project->getComposer(), $sourceFramework))->analyse()
+            (new DependencyCompatibilityAnalyser($project->getComposer(), $sourceFramework, $targetFramework))->analyse()
         );
         $io->progressAdvance(20);
 
