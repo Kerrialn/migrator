@@ -101,10 +101,8 @@ class AnalyseCommand extends Command
 
         if ($transitionTypeEnum === TransitionTypeEnum::MIGRATION) {
             $targetFramework = $this->project->getMigration()?->getTargetFramework();
-            if ($detectedCount === 1 && $primaryFramework !== null && $targetFramework !== null && $primaryFramework->getFrameworkTypeEnum() === $targetFramework) {
-                $io->progressFinish();
-                $io->warning(sprintf('This project is already running on %s. No migration needed.', $targetFramework->value));
-                return Command::SUCCESS;
+            if ($primaryFramework !== null && $targetFramework !== null && $primaryFramework->getFrameworkTypeEnum() === $targetFramework) {
+                $io->note(sprintf('Primary framework matches target (%s) — analysing remaining coupling and migration completeness.', $targetFramework->value));
             }
         }
 
