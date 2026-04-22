@@ -16,17 +16,31 @@ Install globally with Composer:
 composer global require kerrialn/migrator
 ```
 
-Ensure the global Composer bin directory is in your `PATH`. Add this to your `~/.zshrc` or `~/.bashrc`:
+Then ensure the global Composer bin directory is in your `PATH`.
+
+**Mac / Linux** — add to `~/.zshrc` or `~/.bashrc`:
 
 ```bash
 export PATH="$HOME/.composer/vendor/bin:$PATH"
 ```
 
-Then reload your shell:
+Reload your shell:
 
 ```bash
 source ~/.zshrc
 ```
+
+**Windows** — run in PowerShell (adds permanently for your user):
+
+```powershell
+[System.Environment]::SetEnvironmentVariable(
+    "PATH",
+    $env:PATH + ";$env:APPDATA\Composer\vendor\bin",
+    "User"
+)
+```
+
+Then restart your terminal. Alternatively, add `%APPDATA%\Composer\vendor\bin` via **System Properties → Environment Variables**.
 
 ## Usage
 
