@@ -69,6 +69,15 @@ final readonly class MigrationCalculator implements CalculatorInterface
         );
         $io->progressAdvance(4);
 
+        $legacyFiles = $project->getLegacyFiles();
+        if (!$legacyFiles->isEmpty()) {
+            $io->info('analysing legacy code coupling');
+            $migration->setLegacyFileCount($legacyFiles->count());
+            $migration->setLegacyCouplingScore(
+                (new FrameworkCouplingAnalyser($legacyFiles, $sourceFramework, $targetFramework))->analyse()
+            );
+        }
+
         $migration->setComplexity($this->calculateTotalScore($migration));
     }
 

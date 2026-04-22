@@ -65,7 +65,11 @@ class AnalyseCommand extends Command
         $io->progressStart(max: 100);
 
         // 3. extract project files
-        $this->extractProjectFiles(path: $projectPath, exclude: $this->config->getExclude());
+        $this->extractProjectFiles(
+            path: $projectPath,
+            exclude: $this->config->getExclude(),
+            legacyDirs: $this->config->getLegacyDirs(),
+        );
 
         try {
             $composer = (new ComposerJson())
@@ -179,14 +183,28 @@ class AnalyseCommand extends Command
         return $targetPhpVersionEnum;
     }
 
-    /** @param string[] $exclude */
-    private function extractProjectFiles(string $path, array $exclude = []): void
+    /**
+     * @param string[] $exclude
+     * @param string[] $legacyDirs
+     */
+    private function extractProjectFiles(string $path, array $exclude = [], array $legacyDirs = []): void
     {
         $finder = new Finder();
-        $finder->in($path)->exclude($exclude)->files()->name('*.php');
-
+        $finder->in($path)->exclude($exclude)->exclude($legacyDirs)->files()->name('*.php');
         foreach ($finder as $file) {
             $this->project->addFile($file);
+        }
+
+        foreach ($legacyDirs as $legacyDir) {
+            $legacyPath = rtrim($path, '/') . '/' . ltrim($legacyDir, '/');
+            if (!is_dir($legacyPath)) {
+                continue;
+            }
+            $legacyFinder = new Finder();
+            $legacyFinder->in($legacyPath)->exclude($exclude)->files()->name('*.php');
+            foreach ($legacyFinder as $file) {
+                $this->project->addLegacyFile($file);
+            }
         }
     }
 
@@ -279,6 +297,24 @@ class AnalyseCommand extends Command
                 ['Overall Score', $migration->getComplexity(), '—'],
             ]
         );
+
+        if ($migration->hasLegacyData()) {
+            $newFileCount = $this->project->getFiles()->count();
+            $legacyFileCount = $migration->getLegacyFileCount();
+            $totalFiles = $newFileCount + $legacyFileCount;
+            $progressPct = $totalFiles > 0 ? round(($newFileCount / $totalFiles) * 100, 1) : 0;
+
+            $io->section('Legacy Code Remaining');
+            $io->table(
+                ['Metric', 'Value'],
+                [
+                    ['Legacy files', number_format($legacyFileCount)],
+                    ['New code files', number_format($newFileCount)],
+                    ['Migration progress (by file count)', $progressPct . '%'],
+                    ['Legacy coupling score', $migration->getLegacyCouplingScore()],
+                ]
+            );
+        }
 
         $difficulty = match (true) {
             $migration->getComplexity() >= 0 && $migration->getComplexity() < 35 => "Extremely Difficult Migration",

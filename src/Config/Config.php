@@ -3,10 +3,16 @@
 namespace KerrialNewham\Migrator\Config;
 final class Config
 {
-    /** @param string[] $exclude */
+    /**
+     * @param string[] $exclude
+     * @param string[] $legacyDirs Directories containing legacy framework code being migrated away from.
+     *                             Files here are analysed separately so coupling scores reflect the new
+     *                             code layer independently.
+     */
     public function __construct(
         private string $path,
         private array $exclude = [],
+        private readonly array $legacyDirs = [],
         private ?DatabaseConfig $database = null,
     )
     {
@@ -32,6 +38,12 @@ final class Config
     public function setExclude(array $exclude): void
     {
         $this->exclude = $exclude;
+    }
+
+    /** @return string[] */
+    public function getLegacyDirs(): array
+    {
+        return $this->legacyDirs;
     }
 
     public function getDatabase(): ?DatabaseConfig

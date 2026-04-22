@@ -21,6 +21,9 @@ final class Project
     /** @var Collection<int, SplFileInfo> */
     private readonly Collection $files;
 
+    /** @var Collection<int, SplFileInfo> */
+    private readonly Collection $legacyFiles;
+
     private null|TransitionTypeEnum $transitionTypeEnum = null;
     private null|Migration $migration = null;
     private null|Upgrade $upgrade = null;
@@ -28,6 +31,7 @@ final class Project
     public function __construct()
     {
         $this->files = new ArrayCollection();
+        $this->legacyFiles = new ArrayCollection();
         $this->frameworks = new ArrayCollection();
     }
 
@@ -62,6 +66,23 @@ final class Project
     {
         if ($this->files->contains($splFileInfo)) {
             $this->files->removeElement($splFileInfo);
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, SplFileInfo>
+     */
+    public function getLegacyFiles(): Collection
+    {
+        return $this->legacyFiles;
+    }
+
+    public function addLegacyFile(SplFileInfo $splFileInfo): static
+    {
+        if (!$this->legacyFiles->contains($splFileInfo)) {
+            $this->legacyFiles->add($splFileInfo);
         }
 
         return $this;

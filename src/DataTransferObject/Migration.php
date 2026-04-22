@@ -18,6 +18,8 @@ class Migration
     private float $testCoverageScore = 0.0;
     private float $codeSizeScore = 0.0;
     private float $complexity = 0.0;
+    private float $legacyCouplingScore = 0.0;
+    private int $legacyFileCount = 0;
 
     public function getSourceFramework(): ?FrameworkTypeEnum
     {
@@ -117,5 +119,30 @@ class Migration
     public function setComplexity(float $complexity): void
     {
         $this->complexity = $complexity;
+    }
+
+    public function getLegacyCouplingScore(): float
+    {
+        return $this->legacyCouplingScore;
+    }
+
+    public function setLegacyCouplingScore(float $legacyCouplingScore): void
+    {
+        $this->legacyCouplingScore = $legacyCouplingScore;
+    }
+
+    public function getLegacyFileCount(): int
+    {
+        return $this->legacyFileCount;
+    }
+
+    public function setLegacyFileCount(int $legacyFileCount): void
+    {
+        $this->legacyFileCount = $legacyFileCount;
+    }
+
+    public function hasLegacyData(): bool
+    {
+        return $this->legacyFileCount > 0;
     }
 }
