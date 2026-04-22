@@ -53,8 +53,10 @@ final readonly class FrameworkCouplingAnalyser implements MigrationAnalyserInter
         $coupledRatio = $coupledFiles / $totalFiles;
         $heavilyRatio = $heavilyCoupledFiles / $totalFiles;
 
-        // Lightly coupled files subtract up to 60 points, heavily coupled up to 40
-        $score = 100.0 - ($coupledRatio * 60.0) - ($heavilyRatio * 40.0);
+        // Exponential decay: even modest coupling density causes a steep score drop.
+        // At 20% coupled → ~55, at 50% coupled → ~20, at 80% coupled → ~7.
+        $couplingImpact = ($coupledRatio * 0.6) + ($heavilyRatio * 0.4);
+        $score = 100.0 * exp(-4.0 * $couplingImpact);
 
         return round(max(0.0, min(100.0, $score)), 2);
     }
