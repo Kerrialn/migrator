@@ -63,12 +63,6 @@ final readonly class MigrationCalculator implements CalculatorInterface
         );
         $io->progressAdvance(16);
 
-        $io->info('analysing codebase size');
-        $migration->setCodeSizeScore(
-            (new CodebaseSizeAnalyser($files))->analyse()
-        );
-        $io->progressAdvance(4);
-
         $legacyFiles = $project->getLegacyFiles();
         if (!$legacyFiles->isEmpty()) {
             $io->info('analysing legacy code coupling');
@@ -77,6 +71,12 @@ final readonly class MigrationCalculator implements CalculatorInterface
                 (new FrameworkCouplingAnalyser($legacyFiles, $sourceFramework, $targetFramework))->analyse()
             );
         }
+
+        $io->info('analysing codebase size');
+        $migration->setCodeSizeScore(
+            (new CodebaseSizeAnalyser($files))->analyse()
+        );
+        $io->progressAdvance(4);
 
         $migration->setComplexity($this->calculateTotalScore($migration));
     }

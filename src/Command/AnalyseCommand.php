@@ -239,6 +239,16 @@ class AnalyseCommand extends Command
         };
     }
 
+    private function legacyCouplingLabel(float $score): string
+    {
+        return match (true) {
+            $score < 20 => '(heavily coupled — significant rewrite work remains)',
+            $score < 45 => '(moderately coupled — meaningful work remains)',
+            $score < 70 => '(lightly coupled — manageable cleanup remaining)',
+            default     => '(minimal coupling — nearly migrated)',
+        };
+    }
+
     private function printUpgradablityScore(SymfonyStyle $io): void
     {
         $upgrade = $this->project->getUpgrade();
@@ -311,7 +321,7 @@ class AnalyseCommand extends Command
                     ['Legacy files', number_format($legacyFileCount)],
                     ['New code files', number_format($newFileCount)],
                     ['Migration progress (by file count)', $progressPct . '%'],
-                    ['Legacy coupling score', $migration->getLegacyCouplingScore()],
+                    ['Legacy coupling score', sprintf('%s  %s', $migration->getLegacyCouplingScore(), $this->legacyCouplingLabel($migration->getLegacyCouplingScore()))],
                 ]
             );
         }
