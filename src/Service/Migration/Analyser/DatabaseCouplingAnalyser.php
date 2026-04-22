@@ -30,6 +30,7 @@ final class DatabaseCouplingAnalyser implements MigrationAnalyserInterface
 
         $eloquentModels = 0;
         $doctrineEntities = 0;
+        $ci3ActiveRecordFiles = 0;
         $rawQueryFiles = 0;
         $totalFiles = $this->files->count();
 
@@ -40,31 +41,39 @@ final class DatabaseCouplingAnalyser implements MigrationAnalyserInterface
                 $eloquentModels++;
             } elseif ($this->isDoctrineEntity($content)) {
                 $doctrineEntities++;
+            } elseif ($this->usesCI3ActiveRecord($content)) {
+                $ci3ActiveRecordFiles++;
             } elseif ($this->usesRawQueries($content)) {
                 $rawQueryFiles++;
             }
         }
 
-        if ($eloquentModels === 0 && $doctrineEntities === 0 && $rawQueryFiles === 0) {
+        if ($eloquentModels === 0 && $doctrineEntities === 0 && $ci3ActiveRecordFiles === 0 && $rawQueryFiles === 0) {
             return 100.0;
         }
 
         $this->databaseLayerDetected = true;
 
+        $rawRatio = $rawQueryFiles / $totalFiles;
+
         // Doctrine Data Mapper is the most portable ORM pattern
-        if ($doctrineEntities > 0 && $eloquentModels === 0 && $rawQueryFiles === 0) {
+        if ($doctrineEntities > 0 && $eloquentModels === 0 && $ci3ActiveRecordFiles === 0 && $rawQueryFiles === 0) {
             return 70.0;
+        }
+
+        // CI3 Active Record: framework-specific query builder requiring a full rewrite of every query
+        if ($ci3ActiveRecordFiles > 0 && $eloquentModels === 0 && $doctrineEntities === 0) {
+            $ci3Ratio = $ci3ActiveRecordFiles / $totalFiles;
+            return round(max(5.0, 50.0 - ($ci3Ratio * 250.0) - ($rawRatio * 50.0)), 2);
         }
 
         // Raw queries scattered throughout the codebase — no abstraction at all
         if ($rawQueryFiles > 0 && $eloquentModels === 0 && $doctrineEntities === 0) {
-            $rawRatio = $rawQueryFiles / $totalFiles;
             return round(max(20.0, 80.0 - ($rawRatio * 60.0)), 2);
         }
 
         // Eloquent ActiveRecord couples business logic to the DB schema
         $eloquentRatio = $eloquentModels / $totalFiles;
-        $rawRatio = $rawQueryFiles / $totalFiles;
         $score = 50.0 - ($eloquentRatio * 35.0) - ($rawRatio * 15.0);
 
         return round(max(10.0, $score), 2);
@@ -84,6 +93,19 @@ final class DatabaseCouplingAnalyser implements MigrationAnalyserInterface
         return str_contains($content, 'Doctrine\ORM\Mapping')
             || str_contains($content, '#[ORM\\')
             || str_contains($content, '@ORM\\');
+    }
+
+    private function usesCI3ActiveRecord(string $content): bool
+    {
+        return str_contains($content, '$this->db->get(')
+            || str_contains($content, '$this->db->where(')
+            || str_contains($content, '$this->db->select(')
+            || str_contains($content, '$this->db->insert(')
+            || str_contains($content, '$this->db->update(')
+            || str_contains($content, '$this->db->delete(')
+            || str_contains($content, '$this->db->join(')
+            || str_contains($content, '$this->db->from(')
+            || str_contains($content, '$this->db->query(');
     }
 
     private function usesRawQueries(string $content): bool
