@@ -57,11 +57,18 @@ final readonly class FrameworkCouplingSignatures
             ],
             FrameworkTypeEnum::CODEIGNITER->value => [
                 'namespaces' => ['CodeIgniter\\'],
-                'helpers' => ['base_url(', 'site_url(', 'show_error(', 'show_404(', 'redirect('],
+                'helpers' => [
+                    // CI3 & CI4 global helpers
+                    'base_url(', 'site_url(', 'show_error(', 'show_404(', 'redirect(',
+                    // CI3 $this-> patterns ubiquitous in controllers/models
+                    '$this->load->', '$this->db->', '$this->input->',
+                    '$this->session->', '$this->uri->', '$this->config->item(',
+                    '$this->lang->', '$this->output->', '$this->cache->',
+                ],
                 'facades' => [],
                 'baseClasses' => [
                     'extends BaseController', 'extends CI_Controller', 'extends CI_Model',
-                    'extends CI_Migration',
+                    'extends CI_Migration', 'extends MY_Controller', 'extends MY_Model',
                 ],
                 'specificPackagePrefixes' => ['codeigniter/', 'codeigniter4/'],
             ],

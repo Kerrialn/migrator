@@ -53,7 +53,12 @@ final readonly class Frameworks
         return [
             FrameworkTypeEnum::SYMFONY->value => ['bin/console', 'config/bundles.php', 'symfony.lock'],
             FrameworkTypeEnum::LARAVEL->value => ['artisan', 'app/Http/Kernel.php', 'bootstrap/app.php'],
-            FrameworkTypeEnum::CODEIGNITER->value => ['spark', 'app/Config/App.php', 'system/CodeIgniter.php'],
+            FrameworkTypeEnum::CODEIGNITER->value => [
+                // CI4
+                'spark', 'app/Config/App.php',
+                // CI3
+                'application/config/config.php', 'application/controllers', 'application/models',
+            ],
             FrameworkTypeEnum::YII->value => ['yii', 'config/web.php', 'config/console.php'],
             FrameworkTypeEnum::ZEND->value => ['config/application.config.php', 'module/Application'],
             FrameworkTypeEnum::CAKEPHP->value => ['bin/cake', 'config/app.php', 'src/Application.php'],
