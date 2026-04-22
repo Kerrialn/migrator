@@ -10,7 +10,8 @@ class Migration
 {
     private null|FrameworkTypeEnum $targetFramework = null;
     private float $frameworkCouplingScore = 0.0;
-    private float $ormCouplingScore = 0.0;
+    private float $databaseCouplingScore = 0.0;
+    private bool $databaseLayerDetected = false;
     private float $dependencyCompatibilityScore = 0.0;
     private float $architectureScore = 0.0;
     private float $testCoverageScore = 0.0;
@@ -36,14 +37,24 @@ class Migration
         $this->frameworkCouplingScore = $frameworkCouplingScore;
     }
 
-    public function getOrmCouplingScore(): float
+    public function getDatabaseCouplingScore(): float
     {
-        return $this->ormCouplingScore;
+        return $this->databaseCouplingScore;
     }
 
-    public function setOrmCouplingScore(float $ormCouplingScore): void
+    public function setDatabaseCouplingScore(float $databaseCouplingScore): void
     {
-        $this->ormCouplingScore = $ormCouplingScore;
+        $this->databaseCouplingScore = $databaseCouplingScore;
+    }
+
+    public function isDatabaseLayerDetected(): bool
+    {
+        return $this->databaseLayerDetected;
+    }
+
+    public function setDatabaseLayerDetected(bool $databaseLayerDetected): void
+    {
+        $this->databaseLayerDetected = $databaseLayerDetected;
     }
 
     public function getDependencyCompatibilityScore(): float

@@ -86,8 +86,15 @@ class AnalyseCommand extends Command
             $this->project->addFramework($framework);
         }
 
+        $primaryFramework = $this->project->getPrimaryFramework();
+        if ($primaryFramework !== null) {
+            $certainty = $primaryFramework->getCertainty() !== null ? sprintf(' (certainty: %s%%)', $primaryFramework->getCertainty()) : '';
+            $io->info(sprintf('Detected framework: %s%s', $primaryFramework->getFrameworkTypeEnum()->value, $certainty));
+        } else {
+            $io->info('No framework detected.');
+        }
+
         if ($transitionTypeEnum === TransitionTypeEnum::MIGRATION) {
-            $primaryFramework = $this->project->getPrimaryFramework();
             $targetFramework = $this->project->getMigration()?->getTargetFramework();
             if ($primaryFramework !== null && $targetFramework !== null && $primaryFramework->getFrameworkTypeEnum() === $targetFramework) {
                 $io->progressFinish();
@@ -247,7 +254,7 @@ class AnalyseCommand extends Command
             ['Metric', 'Score', 'Weight'],
             [
                 ['Framework Coupling', $migration->getFrameworkCouplingScore(), '35%'],
-                ['ORM Coupling', $migration->getOrmCouplingScore(), '25%'],
+                ['Database Coupling', $migration->isDatabaseLayerDetected() ? $migration->getDatabaseCouplingScore() : 'No database layer detected', '25%'],
                 ['Dependency Compatibility', $migration->getDependencyCompatibilityScore(), '20%'],
                 ['Architecture Quality', $migration->getArchitectureScore(), '15%'],
                 ['Test Coverage', $migration->getTestCoverageScore(), '5%'],

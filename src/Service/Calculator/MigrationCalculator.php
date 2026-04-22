@@ -12,7 +12,7 @@ use KerrialNewham\Migrator\Service\Calculator\Contract\CalculatorInterface;
 use KerrialNewham\Migrator\Service\Migration\Analyser\ArchitectureAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\DependencyCompatibilityAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\FrameworkCouplingAnalyser;
-use KerrialNewham\Migrator\Service\Migration\Analyser\OrmCouplingAnalyser;
+use KerrialNewham\Migrator\Service\Migration\Analyser\DatabaseCouplingAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\TestCoverageAnalyser;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -36,10 +36,10 @@ final readonly class MigrationCalculator implements CalculatorInterface
         );
         $io->progressAdvance(20);
 
-        $io->info('analysing ORM coupling');
-        $migration->setOrmCouplingScore(
-            (new OrmCouplingAnalyser($files))->analyse()
-        );
+        $io->info('analysing database coupling');
+        $dbAnalyser = new DatabaseCouplingAnalyser($files);
+        $migration->setDatabaseCouplingScore($dbAnalyser->analyse());
+        $migration->setDatabaseLayerDetected($dbAnalyser->isDatabaseLayerDetected());
         $io->progressAdvance(20);
 
         $io->info('analysing dependency compatibility');
@@ -67,7 +67,7 @@ final readonly class MigrationCalculator implements CalculatorInterface
     {
         $scores = [
             MigrationCalculationWeightEnum::FRAMEWORK_COUPLING->name => $migration->getFrameworkCouplingScore(),
-            MigrationCalculationWeightEnum::ORM_COUPLING->name => $migration->getOrmCouplingScore(),
+            MigrationCalculationWeightEnum::DATABASE_COUPLING->name => $migration->getDatabaseCouplingScore(),
             MigrationCalculationWeightEnum::DEPENDENCY_COMPATIBILITY->name => $migration->getDependencyCompatibilityScore(),
             MigrationCalculationWeightEnum::ARCHITECTURE->name => $migration->getArchitectureScore(),
             MigrationCalculationWeightEnum::TEST_COVERAGE->name => $migration->getTestCoverageScore(),

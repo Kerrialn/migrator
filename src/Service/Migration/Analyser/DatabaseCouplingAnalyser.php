@@ -8,17 +8,24 @@ use Doctrine\Common\Collections\Collection;
 use KerrialNewham\Migrator\Service\Migration\Analyser\Contract\MigrationAnalyserInterface;
 use Symfony\Component\Finder\SplFileInfo;
 
-final readonly class OrmCouplingAnalyser implements MigrationAnalyserInterface
+final class DatabaseCouplingAnalyser implements MigrationAnalyserInterface
 {
+    private bool $databaseLayerDetected = false;
+
     /** @param Collection<int, SplFileInfo> $files */
-    public function __construct(private Collection $files)
+    public function __construct(private readonly Collection $files)
     {
+    }
+
+    public function isDatabaseLayerDetected(): bool
+    {
+        return $this->databaseLayerDetected;
     }
 
     public function analyse(): float
     {
         if ($this->files->isEmpty()) {
-            return 90.0;
+            return 100.0;
         }
 
         $eloquentModels = 0;
@@ -38,18 +45,27 @@ final readonly class OrmCouplingAnalyser implements MigrationAnalyserInterface
             }
         }
 
-        if ($eloquentModels === 0 && $doctrineEntities === 0) {
-            return 90.0;
+        if ($eloquentModels === 0 && $doctrineEntities === 0 && $rawQueryFiles === 0) {
+            return 100.0;
         }
 
-        if ($doctrineEntities > 0 && $eloquentModels === 0) {
-            // Doctrine entities are portable (Data Mapper pattern)
+        $this->databaseLayerDetected = true;
+
+        // Doctrine Data Mapper is the most portable ORM pattern
+        if ($doctrineEntities > 0 && $eloquentModels === 0 && $rawQueryFiles === 0) {
             return 70.0;
         }
 
-        // Eloquent ActiveRecord is tightly coupled — more models = harder migration
+        // Raw queries scattered throughout the codebase — no abstraction at all
+        if ($rawQueryFiles > 0 && $eloquentModels === 0 && $doctrineEntities === 0) {
+            $rawRatio = $rawQueryFiles / $totalFiles;
+            return round(max(20.0, 80.0 - ($rawRatio * 60.0)), 2);
+        }
+
+        // Eloquent ActiveRecord couples business logic to the DB schema
         $eloquentRatio = $eloquentModels / $totalFiles;
-        $score = 50.0 - ($eloquentRatio * 40.0);
+        $rawRatio = $rawQueryFiles / $totalFiles;
+        $score = 50.0 - ($eloquentRatio * 35.0) - ($rawRatio * 15.0);
 
         return round(max(10.0, $score), 2);
     }
@@ -74,6 +90,8 @@ final readonly class OrmCouplingAnalyser implements MigrationAnalyserInterface
     {
         return str_contains($content, '->prepare(')
             || str_contains($content, '->query(')
-            || str_contains($content, 'PDO::');
+            || str_contains($content, 'PDO::')
+            || str_contains($content, '$wpdb->')
+            || str_contains($content, 'mysqli_query(');
     }
 }
