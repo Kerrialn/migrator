@@ -1,5 +1,6 @@
 {
     "name": "kerrialn/migrator",
+    "license": "MIT",
     "require": {
         "php": "^8.2",
         "symfony/console": "^7.1",
