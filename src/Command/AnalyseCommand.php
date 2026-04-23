@@ -86,6 +86,7 @@ class AnalyseCommand extends Command
             path: $projectPath,
             exclude: $this->config->getExclude(),
             legacyDirs: $this->config->getLegacyDirs(),
+            io: $io,
         );
 
         try {
@@ -204,7 +205,7 @@ class AnalyseCommand extends Command
      * @param string[] $exclude
      * @param string[] $legacyDirs
      */
-    private function extractProjectFiles(string $path, array $exclude = [], array $legacyDirs = []): void
+    private function extractProjectFiles(string $path, array $exclude = [], array $legacyDirs = [], ?SymfonyStyle $io = null): void
     {
         $finder = new Finder();
         $finder->in($path)->exclude($exclude)->exclude($legacyDirs)->files()->name('*.php');
@@ -215,12 +216,18 @@ class AnalyseCommand extends Command
         foreach ($legacyDirs as $legacyDir) {
             $legacyPath = rtrim($path, '/') . '/' . ltrim($legacyDir, '/');
             if (!is_dir($legacyPath)) {
+                $io?->warning(sprintf('Legacy dir "%s" does not exist at %s — skipping.', $legacyDir, $legacyPath));
                 continue;
             }
             $legacyFinder = new Finder();
             $legacyFinder->in($legacyPath)->exclude($exclude)->files()->name('*.php');
+            $count = 0;
             foreach ($legacyFinder as $file) {
                 $this->project->addLegacyFile($file);
+                $count++;
+            }
+            if ($count === 0) {
+                $io?->warning(sprintf('Legacy dir "%s" exists but contains no PHP files — the Legacy Code Remaining section will not appear.', $legacyDir));
             }
         }
     }
