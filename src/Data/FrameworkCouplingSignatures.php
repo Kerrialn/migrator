@@ -104,9 +104,18 @@ final readonly class FrameworkCouplingSignatures
             ],
             FrameworkTypeEnum::PHALCON->value => [
                 'namespaces' => ['Phalcon\\'],
-                'helpers' => [],
+                'helpers' => ['$this->view->', '$this->request->', '$this->response->', '$this->router->', '$this->url->'],
                 'facades' => [],
-                'baseClasses' => ['extends Controller', 'extends Model', 'extends Injectable'],
+                'baseClasses' => [
+                    'extends Controller',
+                    'extends Model',
+                    'extends Injectable',
+                    'extends BaseModel',
+                    'extends ResourceModel',
+                    'extends BaseController',
+                    'extends SecureController',
+                    'extends Task',
+                ],
                 'specificPackagePrefixes' => ['phalcon/'],
             ],
             FrameworkTypeEnum::TEMPEST->value => [
