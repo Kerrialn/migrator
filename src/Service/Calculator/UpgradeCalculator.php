@@ -96,16 +96,9 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         $majorDiff = $this->getMajorVersionDifference($currentPhpVersion, $latestPhpVersion);
         $minorDiff = $this->getMinorVersionDifference($currentPhpVersion, $latestPhpVersion);
 
-        // Now invert the logic: higher difference means harder upgrade
-        $score = 100 - ($majorDiff * 15);  // The higher the major difference, the lower the score
-
-        // If the major difference is 0, account for minor differences
-        if ($majorDiff === 0) {
-            $score += $minorDiff * 3;  // Minor diff adds but doesn't overshadow
-        }
-
-        // Ensure the score stays within the 0-100 range
-        $score = max(0, min(100, round($score, 2)));
+        // Accumulate steps: each major version counts as ~5 minor steps, plus the actual minor diff
+        $totalSteps = ($majorDiff * 5) + $minorDiff;
+        $score = max(0, min(100, round(100 - ($totalSteps * 7), 2)));
 
         return $score;
     }
@@ -160,14 +153,15 @@ final readonly class UpgradeCalculator implements CalculatorInterface
             );
 
             if ($targetFrameworkVersion === null) {
-                $score = 100;  // No target version, assume no upgrade (easy)
+                $score = 100;
             } else {
                 $majorDifference = $this->getMajorVersionDifference($currentVersion, $targetFrameworkVersion);
                 $minorDifference = $this->getMinorVersionDifference($currentVersion, $targetFrameworkVersion);
                 $totalVersionDifference = $majorDifference * 50 + $minorDifference * 2;
 
-                $logDifference = log(1 + $totalVersionDifference, 3); // Base 3 reduces penalty for small differences
-                $score = 100 - min(100, round($logDifference * 5)); // Reduce the weight of the penalty
+                $logDifference = log(1 + $totalVersionDifference, 3);
+                $score = 100 - min(100, round($logDifference * 5));
+                $score = max(0, $score - $this->getFrameworkExtensionPenalty($framework->getFrameworkTypeEnum()));
             }
 
             $totalScore += $score;
@@ -273,6 +267,15 @@ final readonly class UpgradeCalculator implements CalculatorInterface
         } catch (\Exception) {
             return null;
         }
+    }
+
+    private function getFrameworkExtensionPenalty(FrameworkTypeEnum $frameworkType): int
+    {
+        return match ($frameworkType) {
+            // C extension: requires server-side recompilation per PHP version, not just a composer update
+            FrameworkTypeEnum::PHALCON => 20,
+            default => 0,
+        };
     }
 
 }
