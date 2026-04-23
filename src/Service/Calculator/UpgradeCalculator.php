@@ -112,17 +112,7 @@ final readonly class UpgradeCalculator implements CalculatorInterface
             return 100;
         }
 
-        $totalLines = 0;
-        foreach ($phpFiles as $file) {
-            $totalLines += count(file($file->getRealPath()));
-            $io->progressAdvance();
-        }
-
-        $minLines = 5000;
-        $maxLines = 500000;
-        $totalLines = max($minLines, min($totalLines, $maxLines));
-        $normalizedSize = log($maxLines - $totalLines + 1) / log($maxLines - $minLines + 1);
-        $score = round($normalizedSize * 100, 2);
+        $score = round(max(5.0, min(100.0, 200.0 - 45.0 * log10((float) $phpFiles->count()))), 2);
 
         return max(0, min(100, $score));
     }
