@@ -32,7 +32,12 @@ final readonly class ArchitectureAnalyser implements MigrationAnalyserInterface
             $path = strtolower($file->getPathname());
             $content = $file->getContents();
 
-            if (str_contains($path, '/service') || str_contains($path, '/services')) {
+            // Service layer: path-based (Symfony/Laravel) OR Phalcon Injectable
+            if (
+                str_contains($path, '/service') || str_contains($path, '/services')
+                || str_contains($content, 'Phalcon\Di\Injectable')
+                || (bool) preg_match('/\bextends\s+Injectable\b/', $content)
+            ) {
                 $serviceFiles++;
             }
 
@@ -44,16 +49,22 @@ final readonly class ArchitectureAnalyser implements MigrationAnalyserInterface
                 $interfaceFiles++;
             }
 
-            // Constructor injection: __construct with at least one typed parameter
-            if ((bool) preg_match('/public\s+function\s+__construct\s*\([^)]*[A-Z][a-zA-Z\\\\]+\s+\$/', $content)) {
+            // Constructor injection (PSR/Symfony/Laravel) OR Phalcon service locator DI
+            if (
+                (bool) preg_match('/public\s+function\s+__construct\s*\([^)]*[A-Z][a-zA-Z\\\\]+\s+\$/', $content)
+                || str_contains($content, '->getDI()')
+                || str_contains($content, 'getDI()->get(')
+            ) {
                 $diFiles++;
             }
 
-            // Doctrine Data Mapper entities represent proper separation of concerns
+            // Doctrine entities OR Phalcon ORM models (may extend a custom base that wraps Phalcon\Mvc\Model)
             if (
                 str_contains($content, 'Doctrine\ORM\Mapping')
                 || str_contains($content, '#[ORM\\')
                 || str_contains($content, '@ORM\\')
+                || str_contains($content, 'Phalcon\Mvc\Model')
+                || (str_contains($path, '/model') && (bool) preg_match('/\bextends\s+\w*Model\b/', $content))
             ) {
                 $ormEntityFiles++;
             }
@@ -68,10 +79,10 @@ final readonly class ArchitectureAnalyser implements MigrationAnalyserInterface
         // Interface usage — up to 20 pts (20% of files defining interfaces = full marks)
         $interfaceScore = min(20.0, ($interfaceFiles / $total) * 100.0);
 
-        // Constructor DI — up to 20 pts (25% of files using DI = full marks)
+        // Constructor DI or framework-managed DI — up to 20 pts (25% of files = full marks)
         $diScore = min(20.0, ($diFiles / $total) * 80.0);
 
-        // Data Mapper ORM (Doctrine) — up to 15 pts (5% of files as entities = full marks)
+        // Data Mapper ORM or framework ORM models — up to 15 pts (5% of files = full marks)
         $ormScore = min(15.0, ($ormEntityFiles / $total) * 300.0);
 
         return round($serviceScore + $repositoryScore + $interfaceScore + $diScore + $ormScore, 2);
