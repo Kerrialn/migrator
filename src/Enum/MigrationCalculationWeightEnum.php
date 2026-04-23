@@ -12,29 +12,30 @@ enum MigrationCalculationWeightEnum
     case ARCHITECTURE;
     case TEST_COVERAGE;
     case CODEBASE_SIZE;
-
-    public function weight(): int
-    {
-        return match ($this) {
-            self::FRAMEWORK_COUPLING => 30,
-            self::DATABASE_COUPLING => 20,
-            self::DEPENDENCY_COMPATIBILITY => 10,
-            self::ARCHITECTURE => 25,
-            self::TEST_COVERAGE => 5,
-            self::CODEBASE_SIZE => 10,
-        };
-    }
+    case TEMPLATING;
 
     /** @return array<string, int> */
-    public static function getWeights(): array
+    public static function getWeights(bool $includeTemplating = false): array
     {
+        if ($includeTemplating) {
+            return [
+                self::FRAMEWORK_COUPLING->name     => 30,
+                self::DATABASE_COUPLING->name       => 20,
+                self::DEPENDENCY_COMPATIBILITY->name => 10,
+                self::ARCHITECTURE->name            => 20,
+                self::TEST_COVERAGE->name           => 5,
+                self::CODEBASE_SIZE->name           => 5,
+                self::TEMPLATING->name              => 10,
+            ];
+        }
+
         return [
-            self::FRAMEWORK_COUPLING->name => self::FRAMEWORK_COUPLING->weight(),
-            self::DATABASE_COUPLING->name => self::DATABASE_COUPLING->weight(),
-            self::DEPENDENCY_COMPATIBILITY->name => self::DEPENDENCY_COMPATIBILITY->weight(),
-            self::ARCHITECTURE->name => self::ARCHITECTURE->weight(),
-            self::TEST_COVERAGE->name => self::TEST_COVERAGE->weight(),
-            self::CODEBASE_SIZE->name => self::CODEBASE_SIZE->weight(),
+            self::FRAMEWORK_COUPLING->name     => 30,
+            self::DATABASE_COUPLING->name       => 20,
+            self::DEPENDENCY_COMPATIBILITY->name => 10,
+            self::ARCHITECTURE->name            => 25,
+            self::TEST_COVERAGE->name           => 5,
+            self::CODEBASE_SIZE->name           => 10,
         ];
     }
 }

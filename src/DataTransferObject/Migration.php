@@ -20,6 +20,10 @@ class Migration
     private float $complexity = 0.0;
     private float $legacyCouplingScore = 0.0;
     private int $legacyFileCount = 0;
+    private bool $includeTemplating = false;
+    private float $templatingScore = 0.0;
+    private string $detectedEngine = 'none';
+    private int $templateFileCount = 0;
 
     public function getSourceFramework(): ?FrameworkTypeEnum
     {
@@ -144,5 +148,45 @@ class Migration
     public function hasLegacyData(): bool
     {
         return $this->legacyFileCount > 0;
+    }
+
+    public function isIncludeTemplating(): bool
+    {
+        return $this->includeTemplating;
+    }
+
+    public function setIncludeTemplating(bool $includeTemplating): void
+    {
+        $this->includeTemplating = $includeTemplating;
+    }
+
+    public function getTemplatingScore(): float
+    {
+        return $this->templatingScore;
+    }
+
+    public function setTemplatingScore(float $templatingScore): void
+    {
+        $this->templatingScore = $templatingScore;
+    }
+
+    public function getDetectedEngine(): string
+    {
+        return $this->detectedEngine;
+    }
+
+    public function setDetectedEngine(string $detectedEngine): void
+    {
+        $this->detectedEngine = $detectedEngine;
+    }
+
+    public function getTemplateFileCount(): int
+    {
+        return $this->templateFileCount;
+    }
+
+    public function setTemplateFileCount(int $templateFileCount): void
+    {
+        $this->templateFileCount = $templateFileCount;
     }
 }

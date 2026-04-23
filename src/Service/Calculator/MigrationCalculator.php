@@ -14,6 +14,7 @@ use KerrialNewham\Migrator\Service\Migration\Analyser\CodebaseSizeAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\DependencyCompatibilityAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\FrameworkCouplingAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\DatabaseCouplingAnalyser;
+use KerrialNewham\Migrator\Service\Migration\Analyser\TemplatingEngineAnalyser;
 use KerrialNewham\Migrator\Service\Migration\Analyser\TestCoverageAnalyser;
 use Symfony\Component\Console\Style\SymfonyStyle;
 
@@ -78,6 +79,19 @@ final readonly class MigrationCalculator implements CalculatorInterface
         );
         $io->progressAdvance(4);
 
+        if ($migration->isIncludeTemplating()) {
+            $io->info('analysing templating engine');
+            $analyser = new TemplatingEngineAnalyser(
+                path: $project->getPath(),
+                exclude: $project->getExclude(),
+                targetFramework: $targetFramework ?? FrameworkTypeEnum::NONE,
+                composer: $project->getComposer(),
+            );
+            $migration->setDetectedEngine($analyser->detectEngine());
+            $migration->setTemplateFileCount($analyser->getTemplateFileCount());
+            $migration->setTemplatingScore($analyser->analyse());
+        }
+
         $migration->setComplexity($this->calculateTotalScore($migration));
     }
 
@@ -90,10 +104,11 @@ final readonly class MigrationCalculator implements CalculatorInterface
             MigrationCalculationWeightEnum::ARCHITECTURE->name => $migration->getArchitectureScore(),
             MigrationCalculationWeightEnum::TEST_COVERAGE->name => $migration->getTestCoverageScore(),
             MigrationCalculationWeightEnum::CODEBASE_SIZE->name => $migration->getCodeSizeScore(),
+            MigrationCalculationWeightEnum::TEMPLATING->name => $migration->getTemplatingScore(),
         ];
 
         $totalWeightedScore = 0.0;
-        foreach (MigrationCalculationWeightEnum::getWeights() as $name => $weight) {
+        foreach (MigrationCalculationWeightEnum::getWeights($migration->isIncludeTemplating()) as $name => $weight) {
             $totalWeightedScore += ($scores[$name] * $weight) / 100;
         }
 

@@ -12,11 +12,13 @@ use KerrialNewham\Migrator\DataTransferObject\Migration;
 use KerrialNewham\Migrator\DataTransferObject\Project;
 use KerrialNewham\Migrator\DataTransferObject\Upgrade;
 use KerrialNewham\Migrator\Enum\FrameworkTypeEnum;
+use KerrialNewham\Migrator\Enum\MigrationCalculationWeightEnum;
 use KerrialNewham\Migrator\Enum\PhpVersionEnum;
 use KerrialNewham\Migrator\Enum\TransitionTypeEnum;
 use KerrialNewham\Migrator\Service\Calculator\MigrationCalculator;
 use KerrialNewham\Migrator\Service\Calculator\UpgradeCalculator;
 use KerrialNewham\Migrator\Service\FrameworkDetector;
+use KerrialNewham\Migrator\Service\Migration\Analyser\TemplatingEngineAnalyser;
 use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
@@ -46,6 +48,7 @@ class AnalyseCommand extends Command
         $io = new SymfonyStyle(input: $input, output: $output);
         $projectPath = $this->config->getPath();
         $this->project->setPath($projectPath);
+        $this->project->setExclude($this->config->getExclude());
 
         // 1. ask if migration or upgrade
         $transitionTypeEnum = $this->askTransitionType($io);
@@ -61,6 +64,20 @@ class AnalyseCommand extends Command
             $source = $this->askSourceFramework($io);
             $this->resolveTarget(target: $this->askTargetFramework($io));
             $this->project->getMigration()?->setSourceFramework($source);
+
+            $templatingAnalyser = new TemplatingEngineAnalyser(
+                path: $projectPath,
+                exclude: $this->config->getExclude(),
+                targetFramework: $this->project->getMigration()?->getTargetFramework() ?? FrameworkTypeEnum::NONE,
+                composer: null,
+            );
+            if ($templatingAnalyser->hasTemplates()) {
+                $includeTemplating = $io->confirm(
+                    sprintf('Template files detected (%s). Include templating engine in analysis?', $templatingAnalyser->detectEngine()),
+                    default: true
+                );
+                $this->project->getMigration()?->setIncludeTemplating($includeTemplating);
+            }
         }
         $io->progressStart(max: 100);
 
@@ -295,18 +312,24 @@ class AnalyseCommand extends Command
         $io->writeln("<fg=yellow>70-85: Moderate</>");
         $io->writeln("<fg=green>85-100: Straightforward</>\n");
 
-        $io->table(
-            ['Metric', 'Score', 'Weight'],
-            [
-                ['Framework Coupling', $migration->getFrameworkCouplingScore(), '30%'],
-                ['Database Coupling', $migration->isDatabaseLayerDetected() ? $migration->getDatabaseCouplingScore() : 'No database layer detected', '20%'],
-                ['Dependency Compatibility', $migration->getDependencyCompatibilityScore(), '10%'],
-                ['Architecture Quality', $migration->getArchitectureScore(), '25%'],
-                ['Test Coverage', $migration->getTestCoverageScore(), '5%'],
-                ['Codebase Size', $migration->getCodeSizeScore(), '10%'],
-                ['Overall Score', $migration->getComplexity(), '—'],
-            ]
-        );
+        $weights = MigrationCalculationWeightEnum::getWeights($migration->isIncludeTemplating());
+        $rows = [
+            ['Framework Coupling', $migration->getFrameworkCouplingScore(), $weights[MigrationCalculationWeightEnum::FRAMEWORK_COUPLING->name] . '%'],
+            ['Database Coupling', $migration->isDatabaseLayerDetected() ? $migration->getDatabaseCouplingScore() : 'No database layer detected', $weights[MigrationCalculationWeightEnum::DATABASE_COUPLING->name] . '%'],
+            ['Dependency Compatibility', $migration->getDependencyCompatibilityScore(), $weights[MigrationCalculationWeightEnum::DEPENDENCY_COMPATIBILITY->name] . '%'],
+            ['Architecture Quality', $migration->getArchitectureScore(), $weights[MigrationCalculationWeightEnum::ARCHITECTURE->name] . '%'],
+            ['Test Coverage', $migration->getTestCoverageScore(), $weights[MigrationCalculationWeightEnum::TEST_COVERAGE->name] . '%'],
+            ['Codebase Size', $migration->getCodeSizeScore(), $weights[MigrationCalculationWeightEnum::CODEBASE_SIZE->name] . '%'],
+        ];
+
+        if ($migration->isIncludeTemplating()) {
+            $engineLabel = sprintf('Templating (%s, %d files)', $migration->getDetectedEngine(), $migration->getTemplateFileCount());
+            $rows[] = [$engineLabel, $migration->getTemplatingScore(), $weights[MigrationCalculationWeightEnum::TEMPLATING->name] . '%'];
+        }
+
+        $rows[] = ['Overall Score', $migration->getComplexity(), '—'];
+
+        $io->table(['Metric', 'Score', 'Weight'], $rows);
 
         if ($migration->hasLegacyData()) {
             $newFileCount = $this->project->getFiles()->count();

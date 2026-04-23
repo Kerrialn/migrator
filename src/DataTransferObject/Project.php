@@ -12,6 +12,8 @@ use Symfony\Component\Finder\SplFileInfo;
 final class Project
 {
     private string $path;
+    /** @var string[] */
+    private array $exclude = [];
     private null|Composer $composer = null;
     /**
      * @var Collection<int,Framework> $frameworks
@@ -43,6 +45,18 @@ final class Project
     public function setPath(string $path): void
     {
         $this->path = $path;
+    }
+
+    /** @return string[] */
+    public function getExclude(): array
+    {
+        return $this->exclude;
+    }
+
+    /** @param string[] $exclude */
+    public function setExclude(array $exclude): void
+    {
+        $this->exclude = $exclude;
     }
 
     /**
